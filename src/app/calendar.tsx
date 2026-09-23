@@ -1,0 +1,578 @@
+import { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import TaskAddForm from '@/components/task-add-form';
+import TaskEditModal from '@/components/task-edit-modal';
+import TaskRow from '@/components/task-row';
+import { useSettings } from '@/contexts/settings-context';
+import { useTasks } from '@/contexts/task-context';
+import type { Task } from '@/types/task';
+
+const WEEKDAY_DATA = [
+  { label: '日', value: 'sunday', number: 0 },
+  { label: '月', value: 'monday', number: 1 },
+  { label: '火', value: 'tuesday', number: 2 },
+  { label: '水', value: 'wednesday', number: 3 },
+  { label: '木', value: 'thursday', number: 4 },
+  { label: '金', value: 'friday', number: 5 },
+  { label: '土', value: 'saturday', number: 6 },
+] as const;
+
+function formatDate(
+  year: number,
+  month: number,
+  day: number
+) {
+  return (
+    `${year}-` +
+    `${String(month + 1).padStart(2, '0')}-` +
+    `${String(day).padStart(2, '0')}`
+  );
+}
+
+export default function CalendarScreen() {
+  const {
+    tasks,
+    addTask,
+    toggleTask,
+    updateTask,
+    deleteTask,
+  } = useTasks();
+
+  const { weekStart } = useSettings();
+
+  const today = new Date();
+
+  const [year, setYear] = useState(
+    today.getFullYear()
+  );
+
+  const [month, setMonth] = useState(
+    today.getMonth()
+  );
+
+  const [selectedDay, setSelectedDay] =
+    useState(today.getDate());
+
+  const [showForm, setShowForm] =
+    useState(false);
+
+  const [editingTask, setEditingTask] =
+    useState<Task | null>(null);
+
+  // -----------------------------
+  // 開始曜日
+  // -----------------------------
+
+  const startWeekdayIndex =
+    WEEKDAY_DATA.findIndex(
+      (weekday) => weekday.value === weekStart
+    );
+
+  const startWeekdayNumber =
+    WEEKDAY_DATA[startWeekdayIndex].number;
+
+  const orderedWeekdays = [
+    ...WEEKDAY_DATA.slice(startWeekdayIndex),
+    ...WEEKDAY_DATA.slice(
+      0,
+      startWeekdayIndex
+    ),
+  ];
+
+  // -----------------------------
+  // カレンダー生成
+  // -----------------------------
+
+  const daysInMonth = new Date(
+    year,
+    month + 1,
+    0
+  ).getDate();
+
+  const firstDayOfMonth = new Date(
+    year,
+    month,
+    1
+  ).getDay();
+
+  const firstDay =
+    (
+      firstDayOfMonth -
+      startWeekdayNumber +
+      7
+    ) % 7;
+
+  const cells: (number | null)[] = [];
+
+  for (let i = 0; i < firstDay; i++) {
+    cells.push(null);
+  }
+
+  for (
+    let day = 1;
+    day <= daysInMonth;
+    day++
+  ) {
+    cells.push(day);
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  // -----------------------------
+  // 選択中の日付
+  // -----------------------------
+
+  const selectedDate = formatDate(
+    year,
+    month,
+    selectedDay
+  );
+
+  const selectedTasks = tasks.filter(
+    (task) => task.date === selectedDate
+  );
+
+  const incompleteTasks =
+    selectedTasks.filter(
+      (task) => !task.completed
+    );
+
+  const completedTasks =
+    selectedTasks.filter(
+      (task) => task.completed
+    );
+
+  // -----------------------------
+  // 前月
+  // -----------------------------
+
+  const goPreviousMonth = () => {
+    if (month === 0) {
+      setYear(
+        (currentYear) => currentYear - 1
+      );
+
+      setMonth(11);
+    } else {
+      setMonth(
+        (currentMonth) =>
+          currentMonth - 1
+      );
+    }
+
+    setSelectedDay(1);
+    setShowForm(false);
+  };
+
+  // -----------------------------
+  // 翌月
+  // -----------------------------
+
+  const goNextMonth = () => {
+    if (month === 11) {
+      setYear(
+        (currentYear) => currentYear + 1
+      );
+
+      setMonth(0);
+    } else {
+      setMonth(
+        (currentMonth) =>
+          currentMonth + 1
+      );
+    }
+
+    setSelectedDay(1);
+    setShowForm(false);
+  };
+
+  // -----------------------------
+  // 今日かどうか
+  // -----------------------------
+
+  const isToday = (day: number) => {
+    return (
+      year === today.getFullYear() &&
+      month === today.getMonth() &&
+      day === today.getDate()
+    );
+  };
+
+  // -----------------------------
+  // 予定がある日か
+  // -----------------------------
+
+  const hasTasks = (day: number) => {
+    const date = formatDate(
+      year,
+      month,
+      day
+    );
+
+    return tasks.some(
+      (task) => task.date === date
+    );
+  };
+
+  // -----------------------------
+  // 日付選択
+  // -----------------------------
+
+  const handleSelectDay = (
+    day: number
+  ) => {
+    setSelectedDay(day);
+    setShowForm(false);
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* 年月 */}
+      <View style={styles.header}>
+        <Pressable
+          style={styles.arrowButton}
+          onPress={goPreviousMonth}
+        >
+          <Text style={styles.arrow}>
+            ‹
+          </Text>
+        </Pressable>
+
+        <Text style={styles.monthTitle}>
+          {year}年{month + 1}月
+        </Text>
+
+        <Pressable
+          style={styles.arrowButton}
+          onPress={goNextMonth}
+        >
+          <Text style={styles.arrow}>
+            ›
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* 曜日 */}
+      <View style={styles.weekRow}>
+        {orderedWeekdays.map(
+          (weekday) => (
+            <Text
+              key={weekday.value}
+              style={styles.weekday}
+            >
+              {weekday.label}
+            </Text>
+          )
+        )}
+      </View>
+
+      {/* カレンダー */}
+      <View style={styles.calendar}>
+        {cells.map((day, index) => {
+          const selected =
+            day === selectedDay;
+
+          return (
+            <View
+              key={index}
+              style={styles.dayCell}
+            >
+              {day !== null && (
+                <Pressable
+                  style={[
+                    styles.dayButton,
+
+                    selected &&
+                      styles.selectedDay,
+
+                    isToday(day) &&
+                      !selected &&
+                      styles.today,
+                  ]}
+                  onPress={() =>
+                    handleSelectDay(day)
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.dayText,
+
+                      selected &&
+                        styles.selectedDayText,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+
+                  {hasTasks(day) && (
+                    <View
+                      style={[
+                        styles.taskDot,
+
+                        selected &&
+                          styles.taskDotSelected,
+                      ]}
+                    />
+                  )}
+                </Pressable>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* 選択中の日付 */}
+      <View style={styles.selectedHeader}>
+        <Text
+          style={styles.selectedDateTitle}
+        >
+          {month + 1}月{selectedDay}日
+        </Text>
+
+        <Pressable
+          style={styles.smallAddButton}
+          onPress={() =>
+            setShowForm(
+              (current) => !current
+            )
+          }
+        >
+          <Text style={styles.smallAddText}>
+            ＋
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* 予定追加フォーム */}
+      {showForm && (
+        <View style={styles.formContainer}>
+          <TaskAddForm
+            showTitle={false}
+            onAdd={(title, time) => {
+              addTask(
+                title,
+                selectedDate,
+                time
+              );
+
+              setShowForm(false);
+            }}
+            onCancel={() =>
+              setShowForm(false)
+            }
+          />
+        </View>
+      )}
+
+      {/* 予定なし */}
+      {selectedTasks.length === 0 &&
+        !showForm && (
+          <Text style={styles.emptyText}>
+            予定はありません
+          </Text>
+        )}
+
+      {/* 未完了 */}
+      {incompleteTasks.map((task) => (
+        <TaskRow
+          key={task.id}
+          task={task}
+          onToggle={() =>
+            toggleTask(task.id)
+          }
+          onEdit={() =>
+            setEditingTask(task)
+          }
+        />
+      ))}
+
+      {/* 完了 */}
+      {completedTasks.length > 0 && (
+        <>
+          <Text
+            style={styles.completedLabel}
+          >
+            完了
+          </Text>
+
+          {completedTasks.map(
+            (task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                onToggle={() =>
+                  toggleTask(task.id)
+                }
+                onEdit={() =>
+                  setEditingTask(task)
+                }
+              />
+            )
+          )}
+        </>
+      )}
+
+      {/* 編集モーダル */}
+      <TaskEditModal
+        task={editingTask}
+        onClose={() =>
+          setEditingTask(null)
+        }
+        onSave={updateTask}
+        onDelete={deleteTask}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+
+  monthTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+
+  arrowButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  arrow: {
+    fontSize: 32,
+  },
+
+  weekRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+
+  weekday: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#777777',
+  },
+
+  calendar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+
+  dayCell: {
+    width: `${100 / 7}%`,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  dayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  dayText: {
+    fontSize: 16,
+  },
+
+  today: {
+    borderWidth: 1,
+    borderColor: '#222222',
+  },
+
+  selectedDay: {
+    backgroundColor: '#222222',
+  },
+
+  selectedDayText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+
+  taskDot: {
+    position: 'absolute',
+    bottom: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#555555',
+  },
+
+  taskDotSelected: {
+    backgroundColor: '#ffffff',
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: '#dddddd',
+    marginTop: 18,
+    marginBottom: 18,
+  },
+
+  selectedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  selectedDateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+
+  smallAddButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  smallAddText: {
+    fontSize: 28,
+  },
+
+  formContainer: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+
+  emptyText: {
+    marginTop: 18,
+    color: '#999999',
+  },
+
+  completedLabel: {
+    marginTop: 14,
+    marginBottom: 4,
+    fontSize: 14,
+    color: '#777777',
+  },
+});
