@@ -12,6 +12,10 @@ import TaskEditModal from '@/components/task-edit-modal';
 import TaskRow from '@/components/task-row';
 import { useTasks } from '@/contexts/task-context';
 import type { Task } from '@/types/task';
+import {
+  occursOn,
+  taskForDate,
+} from '@/utils/recurrence';
 
 export default function HomeScreen() {
   const {
@@ -53,10 +57,10 @@ export default function HomeScreen() {
   const [editingTask, setEditingTask] =
     useState<Task | null>(null);
 
-  // 今日の予定
-  const todayTasks = tasks.filter(
-    (task) => task.date === today
-  );
+  // 今日の予定（繰り返しの出現分を含む）
+  const todayTasks = tasks
+    .filter((task) => occursOn(task, today))
+    .map((task) => taskForDate(task, today));
 
   // 未完了
   const incompleteTasks = todayTasks.filter(
@@ -66,6 +70,24 @@ export default function HomeScreen() {
   // 完了
   const completedTasks = todayTasks.filter(
     (task) => task.completed
+  );
+
+  // 編集は元の予定に対して行う
+  const openEditor = (displayTask: Task) => {
+    const original = tasks.find(
+      (task) => task.id === displayTask.id
+    );
+
+    setEditingTask(original ?? displayTask);
+  };
+
+  const renderRow = (task: Task) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      onToggle={() => toggleTask(task.id, today)}
+      onEdit={() => openEditor(task)}
+    />
   );
 
   return (
@@ -82,18 +104,7 @@ export default function HomeScreen() {
 
       <View style={styles.line} />
 
-      {incompleteTasks.map((task) => (
-        <TaskRow
-          key={task.id}
-          task={task}
-          onToggle={() =>
-            toggleTask(task.id)
-          }
-          onEdit={() =>
-            setEditingTask(task)
-          }
-        />
-      ))}
+      {incompleteTasks.map(renderRow)}
 
       {/* 完了 */}
       <Text
@@ -107,28 +118,18 @@ export default function HomeScreen() {
 
       <View style={styles.line} />
 
-      {completedTasks.map((task) => (
-        <TaskRow
-          key={task.id}
-          task={task}
-          onToggle={() =>
-            toggleTask(task.id)
-          }
-          onEdit={() =>
-            setEditingTask(task)
-          }
-        />
-      ))}
+      {completedTasks.map(renderRow)}
 
       {/* 予定追加フォーム */}
       {showForm && (
         <View style={styles.formContainer}>
           <TaskAddForm
-            onAdd={(title, time) => {
+            onAdd={(title, time, options) => {
               addTask(
                 title,
                 today,
-                time
+                time,
+                options
               );
 
               setShowForm(false);

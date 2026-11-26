@@ -3,6 +3,7 @@ import {
   Alert,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,8 +11,10 @@ import {
 } from 'react-native';
 
 import DatePickerModal from '@/components/date-picker-modal';
+import RecurrencePicker from '@/components/recurrence-picker';
 import TimePickerModal from '@/components/time-picker-modal';
-import type { Task } from '@/types/task';
+import type { TaskOptions } from '@/contexts/task-context';
+import type { Recurrence, Task } from '@/types/task';
 
 type TaskEditModalProps = {
   task: Task | null;
@@ -22,7 +25,8 @@ type TaskEditModalProps = {
     id: string,
     title: string,
     date: string,
-    startTime: string
+    startTime: string,
+    options: TaskOptions
   ) => void;
 
   onDelete: (id: string) => void;
@@ -54,6 +58,11 @@ export default function TaskEditModal({
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [memo, setMemo] = useState('');
+
+  const [recurrence, setRecurrence] =
+    useState<Recurrence | undefined>(undefined);
 
   const [
     datePickerVisible,
@@ -61,8 +70,18 @@ export default function TaskEditModal({
   ] = useState(false);
 
   const [
+    untilPickerVisible,
+    setUntilPickerVisible,
+  ] = useState(false);
+
+  const [
     timePickerVisible,
     setTimePickerVisible,
+  ] = useState(false);
+
+  const [
+    endTimePickerVisible,
+    setEndTimePickerVisible,
   ] = useState(false);
 
   // 編集する予定が変わったときに
@@ -72,6 +91,9 @@ export default function TaskEditModal({
       setTitle(task.title);
       setDate(task.date);
       setTime(task.startTime);
+      setEndTime(task.endTime ?? '');
+      setMemo(task.memo ?? '');
+      setRecurrence(task.recurrence);
     }
   }, [task]);
 
@@ -94,7 +116,12 @@ export default function TaskEditModal({
       task.id,
       trimmedTitle,
       date,
-      time
+      time,
+      {
+        endTime: endTime || undefined,
+        memo: memo.trim() || undefined,
+        recurrence,
+      }
     );
 
     onClose();
@@ -147,64 +174,178 @@ export default function TaskEditModal({
               予定を編集
             </Text>
 
-            {/* 予定名 */}
-            <Text style={styles.label}>
-              予定名
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={setTitle}
-            />
-
-            {/* 日付 */}
-            <Text style={styles.label}>
-              日付
-            </Text>
-
-            <Pressable
-              style={styles.selectButton}
-              onPress={() =>
-                setDatePickerVisible(true)
-              }
+            <ScrollView
+              style={styles.scroll}
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.selectText}>
-                {formatDateLabel(date)}
+              {/* 予定名 */}
+              <Text style={styles.label}>
+                予定名
               </Text>
 
-              <Text style={styles.chevron}>
-                ›
+              <TextInput
+                style={styles.input}
+                value={title}
+                onChangeText={setTitle}
+              />
+
+              {/* 日付 */}
+              <Text style={styles.label}>
+                {recurrence ? '開始日' : '日付'}
               </Text>
-            </Pressable>
 
-            {/* 時刻 */}
-            <Text style={styles.label}>
-              時刻
-            </Text>
-
-            <Pressable
-              style={styles.selectButton}
-              onPress={() =>
-                setTimePickerVisible(true)
-              }
-            >
-              <Text
-                style={[
-                  styles.selectText,
-                  time === '' &&
-                    styles.placeholderText,
-                ]}
+              <Pressable
+                style={styles.selectButton}
+                onPress={() =>
+                  setDatePickerVisible(true)
+                }
               >
-                {time === ''
-                  ? '時刻なし'
-                  : time}
+                <Text style={styles.selectText}>
+                  {formatDateLabel(date)}
+                </Text>
+
+                <Text style={styles.chevron}>
+                  ›
+                </Text>
+              </Pressable>
+
+              {/* 開始時刻 */}
+              <Text style={styles.label}>
+                開始時刻
               </Text>
 
-              <Text style={styles.chevron}>
-                ›
+              <Pressable
+                style={styles.selectButton}
+                onPress={() =>
+                  setTimePickerVisible(true)
+                }
+              >
+                <Text
+                  style={[
+                    styles.selectText,
+                    time === '' &&
+                      styles.placeholderText,
+                  ]}
+                >
+                  {time === ''
+                    ? '時刻なし'
+                    : time}
+                </Text>
+
+                <Text style={styles.chevron}>
+                  ›
+                </Text>
+              </Pressable>
+
+              {/* 終了時刻 */}
+              <Text style={styles.label}>
+                終了時刻
               </Text>
-            </Pressable>
+
+              <Pressable
+                style={styles.selectButton}
+                onPress={() =>
+                  setEndTimePickerVisible(true)
+                }
+              >
+                <Text
+                  style={[
+                    styles.selectText,
+                    endTime === '' &&
+                      styles.placeholderText,
+                  ]}
+                >
+                  {endTime === ''
+                    ? '時刻なし'
+                    : endTime}
+                </Text>
+
+                <Text style={styles.chevron}>
+                  ›
+                </Text>
+              </Pressable>
+
+              {/* 繰り返し */}
+              <Text style={styles.label}>
+                繰り返し
+              </Text>
+
+              <RecurrencePicker
+                value={recurrence}
+                onChange={setRecurrence}
+              />
+
+              {/* 繰り返し終了日 */}
+              {recurrence && (
+                <>
+                  <Text style={styles.label}>
+                    繰り返し終了日
+                  </Text>
+
+                  <View style={styles.untilRow}>
+                    <Pressable
+                      style={[
+                        styles.selectButton,
+                        styles.untilButton,
+                      ]}
+                      onPress={() =>
+                        setUntilPickerVisible(true)
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.selectText,
+                          !recurrence.until &&
+                            styles.placeholderText,
+                        ]}
+                      >
+                        {recurrence.until
+                          ? formatDateLabel(
+                              recurrence.until
+                            )
+                          : '無期限'}
+                      </Text>
+
+                      <Text style={styles.chevron}>
+                        ›
+                      </Text>
+                    </Pressable>
+
+                    {recurrence.until && (
+                      <Pressable
+                        style={styles.clearButton}
+                        onPress={() =>
+                          setRecurrence({
+                            ...recurrence,
+                            until: undefined,
+                          })
+                        }
+                      >
+                        <Text style={styles.clearText}>
+                          解除
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {/* メモ */}
+              <Text style={styles.label}>
+                メモ
+              </Text>
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.memoInput,
+                ]}
+                value={memo}
+                onChangeText={setMemo}
+                placeholder="メモ（任意）"
+                multiline
+              />
+            </ScrollView>
 
             {/* 下部ボタン */}
             <View style={styles.buttons}>
@@ -257,7 +398,27 @@ export default function TaskEditModal({
       />
 
       {/* =========================
-          時刻ピッカー
+          繰り返し終了日ピッカー
+      ========================== */}
+
+      <DatePickerModal
+        visible={untilPickerVisible}
+        value={recurrence?.until ?? date}
+        onClose={() =>
+          setUntilPickerVisible(false)
+        }
+        onConfirm={(selectedDate) => {
+          if (recurrence) {
+            setRecurrence({
+              ...recurrence,
+              until: selectedDate,
+            });
+          }
+        }}
+      />
+
+      {/* =========================
+          開始時刻ピッカー
       ========================== */}
 
       <TimePickerModal
@@ -268,6 +429,21 @@ export default function TaskEditModal({
         }
         onConfirm={(selectedTime) => {
           setTime(selectedTime);
+        }}
+      />
+
+      {/* =========================
+          終了時刻ピッカー
+      ========================== */}
+
+      <TimePickerModal
+        visible={endTimePickerVisible}
+        value={endTime}
+        onClose={() =>
+          setEndTimePickerVisible(false)
+        }
+        onConfirm={(selectedTime) => {
+          setEndTime(selectedTime);
         }}
       />
     </>
@@ -286,6 +462,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 18,
     padding: 20,
+    maxHeight: '88%',
+  },
+
+  scroll: {
+    flexShrink: 1,
   },
 
   title: {
@@ -309,6 +490,11 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginBottom: 14,
     fontSize: 16,
+  },
+
+  memoInput: {
+    minHeight: 68,
+    textAlignVertical: 'top',
   },
 
   selectButton: {
@@ -337,6 +523,27 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 24,
     color: '#aaaaaa',
+  },
+
+  untilRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+
+  untilButton: {
+    flex: 1,
+  },
+
+  clearButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+
+  clearText: {
+    fontSize: 15,
+    color: '#666666',
   },
 
   buttons: {

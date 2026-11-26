@@ -7,12 +7,16 @@ import {
   View,
 } from 'react-native';
 
+import RecurrencePicker from '@/components/recurrence-picker';
 import TimePickerModal from '@/components/time-picker-modal';
+import type { TaskOptions } from '@/contexts/task-context';
+import type { Recurrence } from '@/types/task';
 
 type TaskAddFormProps = {
   onAdd: (
     title: string,
-    startTime: string
+    startTime: string,
+    options: TaskOptions
   ) => void;
 
   onCancel: () => void;
@@ -27,9 +31,27 @@ export default function TaskAddForm({
 }: TaskAddFormProps) {
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [memo, setMemo] = useState('');
+
+  const [recurrence, setRecurrence] =
+    useState<Recurrence | undefined>(undefined);
 
   const [timePickerVisible, setTimePickerVisible] =
     useState(false);
+
+  const [
+    endTimePickerVisible,
+    setEndTimePickerVisible,
+  ] = useState(false);
+
+  const resetForm = () => {
+    setTitle('');
+    setTime('');
+    setEndTime('');
+    setMemo('');
+    setRecurrence(undefined);
+  };
 
   const handleAdd = () => {
     const trimmedTitle = title.trim();
@@ -38,18 +60,17 @@ export default function TaskAddForm({
       return;
     }
 
-    onAdd(
-      trimmedTitle,
-      time
-    );
+    onAdd(trimmedTitle, time, {
+      endTime: endTime || undefined,
+      memo: memo.trim() || undefined,
+      recurrence,
+    });
 
-    setTitle('');
-    setTime('');
+    resetForm();
   };
 
   const handleCancel = () => {
-    setTitle('');
-    setTime('');
+    resetForm();
     onCancel();
   };
 
@@ -74,9 +95,9 @@ export default function TaskAddForm({
           onChangeText={setTitle}
         />
 
-        {/* 時刻 */}
+        {/* 開始時刻 */}
         <Text style={styles.label}>
-          時刻
+          開始時刻
         </Text>
 
         <Pressable
@@ -102,6 +123,57 @@ export default function TaskAddForm({
           </Text>
         </Pressable>
 
+        {/* 終了時刻 */}
+        <Text style={styles.label}>
+          終了時刻
+        </Text>
+
+        <Pressable
+          style={styles.timeButton}
+          onPress={() =>
+            setEndTimePickerVisible(true)
+          }
+        >
+          <Text
+            style={[
+              styles.timeText,
+              endTime === '' &&
+                styles.placeholderText,
+            ]}
+          >
+            {endTime === ''
+              ? '時刻を選択（任意）'
+              : endTime}
+          </Text>
+
+          <Text style={styles.chevron}>
+            ›
+          </Text>
+        </Pressable>
+
+        {/* 繰り返し */}
+        <Text style={styles.label}>
+          繰り返し
+        </Text>
+
+        <RecurrencePicker
+          value={recurrence}
+          onChange={setRecurrence}
+        />
+
+        {/* メモ */}
+        <Text style={styles.label}>
+          メモ
+        </Text>
+
+        <TextInput
+          style={[styles.input, styles.memoInput]}
+          placeholder="メモ（任意）"
+          value={memo}
+          onChangeText={setMemo}
+          multiline
+        />
+
         {/* ボタン */}
         <View style={styles.buttons}>
           <Pressable
@@ -124,7 +196,7 @@ export default function TaskAddForm({
         </View>
       </View>
 
-      {/* 時刻ピッカー */}
+      {/* 開始時刻ピッカー */}
       <TimePickerModal
         visible={timePickerVisible}
         value={time}
@@ -133,6 +205,18 @@ export default function TaskAddForm({
         }
         onConfirm={(selectedTime) => {
           setTime(selectedTime);
+        }}
+      />
+
+      {/* 終了時刻ピッカー */}
+      <TimePickerModal
+        visible={endTimePickerVisible}
+        value={endTime}
+        onClose={() =>
+          setEndTimePickerVisible(false)
+        }
+        onConfirm={(selectedTime) => {
+          setEndTime(selectedTime);
         }}
       />
     </>
@@ -167,6 +251,11 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginBottom: 14,
     fontSize: 16,
+  },
+
+  memoInput: {
+    minHeight: 68,
+    textAlignVertical: 'top',
   },
 
   timeButton: {
