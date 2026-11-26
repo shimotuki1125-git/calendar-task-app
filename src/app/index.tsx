@@ -105,6 +105,13 @@ export default function HomeScreen() {
 
       <View style={styles.line} />
 
+      {todayTasks.length === 0 &&
+        !showForm && (
+          <Text style={styles.emptyText}>
+            今日の予定はありません
+          </Text>
+        )}
+
       {incompleteTasks.map(renderRow)}
 
       {/* 完了 */}
@@ -198,6 +205,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#dddddd',
     marginTop: 8,
     marginBottom: 8,
+  },
+
+  emptyText: {
+    marginTop: 10,
+    marginBottom: 4,
+    color: '#999999',
   },
 
   completedSection: {

@@ -71,11 +71,17 @@ export default function TimePickerModal({
         initialMinute = parsedMinute;
       }
     } else {
-      // 時刻未設定なら現在時刻を初期値にする
+      // 時刻未設定なら、次の正時（○時00分）を
+      // 初期値にする（現在時刻の分まで使うと
+      // 11:57 のような中途半端な時刻になるため）
       const now = new Date();
 
-      initialHour = now.getHours();
-      initialMinute = now.getMinutes();
+      initialHour =
+        now.getMinutes() === 0
+          ? now.getHours()
+          : (now.getHours() + 1) % 24;
+
+      initialMinute = 0;
     }
 
     setHour(initialHour);

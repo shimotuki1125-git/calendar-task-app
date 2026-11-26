@@ -64,6 +64,10 @@ export default function TaskEditModal({
   const [recurrence, setRecurrence] =
     useState<Recurrence | undefined>(undefined);
 
+  // 予定名が未入力のまま保存しようとした
+  const [titleError, setTitleError] =
+    useState(false);
+
   const [
     datePickerVisible,
     setDatePickerVisible,
@@ -89,6 +93,7 @@ export default function TaskEditModal({
   useEffect(() => {
     if (task !== null) {
       setTitle(task.title);
+      setTitleError(false);
       setDate(task.date);
       setTime(task.startTime);
       setEndTime(task.endTime ?? '');
@@ -109,6 +114,9 @@ export default function TaskEditModal({
     const trimmedTitle = title.trim();
 
     if (trimmedTitle === '') {
+      // 無反応だと分かりにくいので
+      // 入力欄にエラーを表示する
+      setTitleError(true);
       return;
     }
 
@@ -184,10 +192,26 @@ export default function TaskEditModal({
               </Text>
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  titleError &&
+                    styles.inputError,
+                ]}
                 value={title}
-                onChangeText={setTitle}
+                onChangeText={(text) => {
+                  setTitle(text);
+
+                  if (text.trim() !== '') {
+                    setTitleError(false);
+                  }
+                }}
               />
+
+              {titleError && (
+                <Text style={styles.errorText}>
+                  予定名を入力してください
+                </Text>
+              )}
 
               {/* 日付 */}
               <Text style={styles.label}>
@@ -490,6 +514,17 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginBottom: 14,
     fontSize: 16,
+  },
+
+  inputError: {
+    borderColor: '#d64545',
+    marginBottom: 6,
+  },
+
+  errorText: {
+    fontSize: 13,
+    color: '#d64545',
+    marginBottom: 14,
   },
 
   memoInput: {

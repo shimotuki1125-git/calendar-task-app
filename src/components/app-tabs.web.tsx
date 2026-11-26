@@ -103,6 +103,10 @@ function CustomTabList(
 const styles = StyleSheet.create({
   tabSlot: {
     height: '100%',
+
+    // タブバー（absolute配置・minHeight 64）が
+    // 画面の下部に重ならないように逃がす
+    paddingBottom: 64,
   },
 
   tabListContainer: {
