@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -355,6 +356,17 @@ export default function CalendarScreen() {
 
       <View style={styles.divider} />
 
+      {/* 日付見出し・フォーム・予定リストは
+          スクロール可能にする（フォームが
+          画面に収まらない端末でも下まで届くように） */}
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={
+          styles.scrollContent
+        }
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* 選択中の日付 */}
       <View style={styles.selectedHeader}>
         <Text
@@ -447,6 +459,7 @@ export default function CalendarScreen() {
           )}
         </>
       )}
+      </ScrollView>
 
       {/* 編集モーダル */}
       <TaskEditModal
@@ -560,6 +573,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#dddddd',
     marginTop: 18,
     marginBottom: 18,
+  },
+
+  scrollArea: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingBottom: 24,
   },
 
   selectedHeader: {
