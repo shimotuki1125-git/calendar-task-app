@@ -5,6 +5,7 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
 import type { Task } from '@/types/task';
 
 type TaskRowProps = {
@@ -18,6 +19,8 @@ export default function TaskRow({
   onToggle,
   onEdit,
 }: TaskRowProps) {
+  const theme = useTheme();
+
   const timeLabel = task.startTime
     ? task.endTime
       ? `${task.startTime}〜${task.endTime}`
@@ -31,7 +34,12 @@ export default function TaskRow({
         style={styles.checkboxButton}
         onPress={onToggle}
       >
-        <Text style={styles.checkbox}>
+        <Text
+          style={[
+            styles.checkbox,
+            { color: theme.text },
+          ]}
+        >
           {task.completed ? '✓' : '□'}
         </Text>
       </Pressable>
@@ -41,7 +49,12 @@ export default function TaskRow({
         style={styles.taskContent}
         onPress={onEdit}
       >
-        <Text style={styles.time}>
+        <Text
+          style={[
+            styles.time,
+            { color: theme.textSecondary },
+          ]}
+        >
           {timeLabel}
         </Text>
 
@@ -49,8 +62,11 @@ export default function TaskRow({
           <Text
             style={[
               styles.taskTitle,
-              task.completed &&
+              { color: theme.text },
+              task.completed && [
                 styles.completedTask,
+                { color: theme.textTertiary },
+              ],
             ]}
           >
             {task.title}
@@ -59,7 +75,10 @@ export default function TaskRow({
 
           {!!task.memo && (
             <Text
-              style={styles.memo}
+              style={[
+                styles.memo,
+                { color: theme.textTertiary },
+              ]}
               numberOfLines={1}
             >
               {task.memo}
@@ -78,8 +97,9 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
 
+  // タップ領域を広げて押しやすくする
   checkboxButton: {
-    width: 32,
+    width: 44,
     minHeight: 48,
     alignItems: 'flex-start',
     justifyContent: 'center',
@@ -99,7 +119,6 @@ const styles = StyleSheet.create({
   time: {
     width: 118,
     fontSize: 14,
-    color: '#555555',
   },
 
   titleArea: {
@@ -112,12 +131,10 @@ const styles = StyleSheet.create({
 
   memo: {
     fontSize: 13,
-    color: '#999999',
     marginTop: 2,
   },
 
   completedTask: {
-    color: '#888888',
     textDecorationLine: 'line-through',
   },
 });

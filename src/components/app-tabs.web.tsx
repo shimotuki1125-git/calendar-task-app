@@ -17,6 +17,8 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
+
 export default function AppTabs() {
   return (
     <Tabs>
@@ -66,19 +68,27 @@ function TabButton({
   isFocused,
   ...props
 }: TabTriggerSlotProps) {
+  const theme = useTheme();
+
   return (
     <Pressable
       {...props}
       style={({ pressed }) => [
         styles.tabButton,
-        isFocused && styles.tabButtonFocused,
+        isFocused && {
+          backgroundColor: theme.selection,
+        },
         pressed && styles.pressed,
       ]}
     >
       <Text
         style={[
           styles.tabText,
-          isFocused && styles.tabTextFocused,
+          { color: theme.textSecondary },
+          isFocused && [
+            styles.tabTextFocused,
+            { color: theme.text },
+          ],
         ]}
       >
         {children}
@@ -90,10 +100,18 @@ function TabButton({
 function CustomTabList(
   props: TabListProps
 ) {
+  const theme = useTheme();
+
   return (
     <View
       {...props}
-      style={styles.tabListContainer}
+      style={[
+        styles.tabListContainer,
+        {
+          backgroundColor: theme.background,
+          borderTopColor: theme.borderLight,
+        },
+      ]}
     >
       {props.children}
     </View>
@@ -121,12 +139,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
 
-    backgroundColor: '#ffffff',
-
     borderTopWidth: 1,
-    borderTopColor: '#eeeeee',
   },
-
   tabButton: {
     minWidth: 110,
     paddingHorizontal: 20,
@@ -136,17 +150,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
 
-  tabButtonFocused: {
-    backgroundColor: '#f2f2f2',
-  },
-
   tabText: {
     fontSize: 14,
-    color: '#888888',
   },
 
   tabTextFocused: {
-    color: '#222222',
     fontWeight: '600',
   },
 

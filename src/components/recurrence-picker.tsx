@@ -5,6 +5,7 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
 import type {
   Recurrence,
   RecurrenceFreq,
@@ -32,6 +33,8 @@ export default function RecurrencePicker({
   value,
   onChange,
 }: RecurrencePickerProps) {
+  const theme = useTheme();
+
   const selectedFreq = value?.freq ?? null;
 
   const handleSelect = (
@@ -60,7 +63,15 @@ export default function RecurrencePicker({
             key={option.label}
             style={[
               styles.chip,
-              selected && styles.chipSelected,
+              {
+                borderColor: theme.border,
+                backgroundColor:
+                  theme.inputBackground,
+              },
+              selected && {
+                backgroundColor: theme.accent,
+                borderColor: theme.accent,
+              },
             ]}
             onPress={() =>
               handleSelect(option.freq)
@@ -69,8 +80,11 @@ export default function RecurrencePicker({
             <Text
               style={[
                 styles.chipText,
-                selected &&
+                { color: theme.textSecondary },
+                selected && [
                   styles.chipTextSelected,
+                  { color: theme.accentText },
+                ],
               ]}
             >
               {option.label}
@@ -94,22 +108,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#dddddd',
-    backgroundColor: '#ffffff',
-  },
-
-  chipSelected: {
-    backgroundColor: '#222222',
-    borderColor: '#222222',
   },
 
   chipText: {
     fontSize: 14,
-    color: '#555555',
   },
 
   chipTextSelected: {
-    color: '#ffffff',
     fontWeight: '600',
   },
 });

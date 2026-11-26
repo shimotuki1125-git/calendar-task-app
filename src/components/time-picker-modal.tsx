@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
+
 const ITEM_HEIGHT = 50;
 
 const HOURS = Array.from(
@@ -33,6 +35,8 @@ export default function TimePickerModal({
   onClose,
   onConfirm,
 }: TimePickerModalProps) {
+  const theme = useTheme();
+
   const hourRef = useRef<ScrollView>(null);
   const minuteRef = useRef<ScrollView>(null);
 
@@ -157,8 +161,18 @@ export default function TimePickerModal({
           onPress={onClose}
         />
 
-        <View style={styles.container}>
-          <Text style={styles.title}>
+        <View
+          style={[
+            styles.container,
+            { backgroundColor: theme.background },
+          ]}
+        >
+          <Text
+            style={[
+              styles.title,
+              { color: theme.text },
+            ]}
+          >
             時刻を選択
           </Text>
 
@@ -166,7 +180,12 @@ export default function TimePickerModal({
             {/* 中央の選択枠 */}
             <View
               pointerEvents="none"
-              style={styles.selectionBox}
+              style={[
+                styles.selectionBox,
+                {
+                  backgroundColor: theme.selection,
+                },
+              ]}
             />
 
             {/* 時 */}
@@ -198,8 +217,11 @@ export default function TimePickerModal({
                   <Text
                     style={[
                       styles.itemText,
-                      hour === item &&
+                      { color: theme.textTertiary },
+                      hour === item && [
                         styles.selectedText,
+                        { color: theme.text },
+                      ],
                     ]}
                   >
                     {String(item).padStart(
@@ -211,7 +233,12 @@ export default function TimePickerModal({
               ))}
             </ScrollView>
 
-            <Text style={styles.separator}>
+            <Text
+              style={[
+                styles.separator,
+                { color: theme.text },
+              ]}
+            >
               :
             </Text>
 
@@ -244,8 +271,11 @@ export default function TimePickerModal({
                   <Text
                     style={[
                       styles.itemText,
-                      minute === item &&
+                      { color: theme.textTertiary },
+                      minute === item && [
                         styles.selectedText,
+                        { color: theme.text },
+                      ],
                     ]}
                   >
                     {String(item).padStart(
@@ -263,7 +293,12 @@ export default function TimePickerModal({
               style={styles.clearButton}
               onPress={handleClear}
             >
-              <Text style={styles.clearText}>
+              <Text
+                style={[
+                  styles.clearText,
+                  { color: theme.textSecondary },
+                ]}
+              >
                 時刻なし
               </Text>
             </Pressable>
@@ -273,16 +308,29 @@ export default function TimePickerModal({
                 style={styles.cancelButton}
                 onPress={onClose}
               >
-                <Text style={styles.cancelText}>
+                <Text
+                  style={[
+                    styles.cancelText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   キャンセル
                 </Text>
               </Pressable>
 
               <Pressable
-                style={styles.confirmButton}
+                style={[
+                  styles.confirmButton,
+                  { backgroundColor: theme.accent },
+                ]}
                 onPress={handleConfirm}
               >
-                <Text style={styles.confirmText}>
+                <Text
+                  style={[
+                    styles.confirmText,
+                    { color: theme.accentText },
+                  ]}
+                >
                   完了
                 </Text>
               </Pressable>
@@ -306,7 +354,6 @@ const styles = StyleSheet.create({
   },
 
   container: {
-    backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 24,
@@ -335,7 +382,6 @@ const styles = StyleSheet.create({
     left: 30,
     right: 30,
     height: ITEM_HEIGHT,
-    backgroundColor: '#f3f3f3',
     borderRadius: 10,
   },
 
@@ -356,13 +402,11 @@ const styles = StyleSheet.create({
 
   itemText: {
     fontSize: 18,
-    color: '#aaaaaa',
   },
 
   selectedText: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#222222',
   },
 
   separator: {
@@ -393,7 +437,6 @@ const styles = StyleSheet.create({
 
   clearText: {
     fontSize: 15,
-    color: '#666666',
   },
 
   cancelButton: {
@@ -403,18 +446,15 @@ const styles = StyleSheet.create({
 
   cancelText: {
     fontSize: 16,
-    color: '#666666',
   },
 
   confirmButton: {
-    backgroundColor: '#222222',
     paddingHorizontal: 22,
     paddingVertical: 10,
     borderRadius: 9,
   },
 
   confirmText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
