@@ -52,6 +52,33 @@ type TaskContextType = {
 
   deleteTask: (id: string) => void;
 
+  // 完成済みの予定オブジェクトを
+  // そのまま追加する
+  // （繰り返しの「この回だけ」編集で
+  //   分離した単発予定の作成に使う）
+  addTaskObject: (task: Task) => void;
+
+  // 繰り返し予定の特定の出現日を
+  // スキップする（出現しなくなる）
+  // removeCompleted を指定すると、その日の
+  // 完了記録も元の予定から取り除く
+  skipOccurrence: (
+    id: string,
+    date: string,
+    options?: { removeCompleted?: boolean }
+  ) => void;
+
+  // 複数の予定の日付をまとめて変更する
+  // （期限切れの「今日へ移す」用）
+  moveTasksToDate: (
+    ids: string[],
+    date: string
+  ) => void;
+
+  // 複数の予定をまとめて完了にする
+  // （期限切れの「すべて完了」用）
+  completeTasks: (ids: string[]) => void;
+
   // バックアップの読み込み用：
   // 予定をすべて置き換える
   // （保存と通知の同期は既存の仕組みで連動する）
@@ -229,6 +256,14 @@ export function TaskProvider({
                 ? task.completedDates
                 : [])
             : undefined,
+
+          // スキップした日付も
+          // 完了状態と同じ扱いにする
+          skippedDates: isRecurring
+            ? (wasRecurring
+                ? task.skippedDates
+                : undefined)
+            : undefined,
         };
       })
     );
@@ -242,6 +277,89 @@ export function TaskProvider({
     setTasks((currentTasks) =>
       currentTasks.filter(
         (task) => task.id !== id
+      )
+    );
+  };
+
+  // -----------------------------
+  // 完成済みの予定オブジェクトを追加
+  // -----------------------------
+
+  const addTaskObject = (task: Task) => {
+    setTasks((currentTasks) => [
+      ...currentTasks,
+      task,
+    ]);
+  };
+
+  // -----------------------------
+  // 繰り返し予定の出現日をスキップ
+  // -----------------------------
+
+  const skipOccurrence = (
+    id: string,
+    date: string,
+    options?: { removeCompleted?: boolean }
+  ) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => {
+        if (task.id !== id) {
+          return task;
+        }
+
+        const skippedDates =
+          task.skippedDates ?? [];
+
+        return {
+          ...task,
+
+          skippedDates:
+            skippedDates.includes(date)
+              ? skippedDates
+              : [...skippedDates, date],
+
+          // 分離した単発予定へ完了状態を
+          // 移す場合は、元の完了記録を消す
+          completedDates:
+            options?.removeCompleted
+              ? (task.completedDates ?? [])
+                  .filter(
+                    (completedDate) =>
+                      completedDate !== date
+                  )
+              : task.completedDates,
+        };
+      })
+    );
+  };
+
+  // -----------------------------
+  // 複数の予定の日付をまとめて変更
+  // -----------------------------
+
+  const moveTasksToDate = (
+    ids: string[],
+    date: string
+  ) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        ids.includes(task.id)
+          ? { ...task, date }
+          : task
+      )
+    );
+  };
+
+  // -----------------------------
+  // 複数の予定をまとめて完了にする
+  // -----------------------------
+
+  const completeTasks = (ids: string[]) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        ids.includes(task.id)
+          ? { ...task, completed: true }
+          : task
       )
     );
   };
@@ -263,6 +381,10 @@ export function TaskProvider({
         toggleTask,
         updateTask,
         deleteTask,
+        addTaskObject,
+        skipOccurrence,
+        moveTasksToDate,
+        completeTasks,
         replaceTasks,
       }}
     >

@@ -21,6 +21,8 @@ import { useTasks } from '@/contexts/task-context';
 import { useTheme } from '@/hooks/use-theme';
 import { ensureNotificationPermission } from '@/notifications/task-notifications';
 import type { Task } from '@/types/task';
+import { isRealDateString } from '@/utils/recurrence';
+import { isValidTimeString } from '@/utils/tasks';
 
 const WEEKDAYS: {
   value: WeekStart;
@@ -48,13 +50,30 @@ const REMINDER_TIMINGS: {
   { value: 60, label: '1時間前' },
 ];
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+// 日付の配列から、実在する日付だけを
+// 取り出す（completedDates など用）
+// 配列でない場合は undefined
+function filterRealDates(
+  value: unknown
+): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value.filter(
+    (date): date is string =>
+      typeof date === 'string' &&
+      isRealDateString(date)
+  );
+}
 
 // -----------------------------------
 // バックアップの読み込み検証
 // JSON を検証して Task[] に変換する
 // 形式が正しくない場合は null を返す
 // （呼び出し側で置き換えを中止する）
+// 日付は実在すること、時刻は HH:mm 形式
+// であることまで確認する
 // -----------------------------------
 function parseImportedTasks(
   text: string
@@ -94,9 +113,11 @@ function parseImportedTasks(
       return null;
     }
 
+    // 日付は形式だけでなく
+    // 実在する日付であること
     if (
       typeof record.date !== 'string' ||
-      !DATE_PATTERN.test(record.date)
+      !isRealDateString(record.date)
     ) {
       return null;
     }
@@ -109,10 +130,24 @@ function parseImportedTasks(
     }
 
     // 任意項目は型が合うものだけ取り込む
+    // 時刻は空文字か HH:mm 形式であること
+    // （不正な時刻があれば読み込みを中止）
     const startTime =
       typeof record.startTime === 'string'
         ? record.startTime
         : '';
+
+    if (!isValidTimeString(startTime)) {
+      return null;
+    }
+
+    if (
+      typeof record.endTime === 'string' &&
+      record.endTime !== '' &&
+      !isValidTimeString(record.endTime)
+    ) {
+      return null;
+    }
 
     const endTime =
       typeof record.endTime === 'string' &&
@@ -149,23 +184,25 @@ function parseImportedTasks(
       ) {
         recurrence = {
           freq: rec.freq,
+          // 終了日は実在する日付だけ取り込む
           until:
             typeof rec.until === 'string' &&
-            DATE_PATTERN.test(rec.until)
+            isRealDateString(rec.until)
               ? rec.until
               : undefined,
         };
       }
     }
 
-    const completedDates = Array.isArray(
+    // 日付ごとの記録は、実在する日付だけ
+    // 取り込む（不正な要素は除外する）
+    const completedDates = filterRealDates(
       record.completedDates
-    )
-      ? record.completedDates.filter(
-          (date): date is string =>
-            typeof date === 'string'
-        )
-      : undefined;
+    );
+
+    const skippedDates = filterRealDates(
+      record.skippedDates
+    );
 
     imported.push({
       id: record.id,
@@ -177,6 +214,7 @@ function parseImportedTasks(
       memo,
       recurrence,
       completedDates,
+      skippedDates,
     });
   }
 

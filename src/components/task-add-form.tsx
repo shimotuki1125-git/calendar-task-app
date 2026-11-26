@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -9,9 +10,13 @@ import {
 
 import RecurrencePicker from '@/components/recurrence-picker';
 import TimePickerModal from '@/components/time-picker-modal';
-import type { TaskOptions } from '@/contexts/task-context';
+import {
+  useTasks,
+  type TaskOptions,
+} from '@/contexts/task-context';
 import { useTheme } from '@/hooks/use-theme';
-import type { Recurrence } from '@/types/task';
+import type { Recurrence, Task } from '@/types/task';
+import { findOverlappingTask } from '@/utils/tasks';
 
 type TaskAddFormProps = {
   onAdd: (
@@ -23,14 +28,21 @@ type TaskAddFormProps = {
   onCancel: () => void;
 
   showTitle?: boolean;
+
+  // 追加対象の日付 (YYYY-MM-DD)
+  // 予定の重なり判定に使う
+  date: string;
 };
 
 export default function TaskAddForm({
   onAdd,
   onCancel,
   showTitle = true,
+  date,
 }: TaskAddFormProps) {
   const theme = useTheme();
+
+  const { tasks } = useTasks();
 
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('');
@@ -66,6 +78,19 @@ export default function TaskAddForm({
     setEndTimeError(false);
   };
 
+  // 実際の追加処理
+  // （重なり警告で「保存する」を選んだ
+  //   場合もここを通る）
+  const performAdd = (trimmedTitle: string) => {
+    onAdd(trimmedTitle, time, {
+      endTime: endTime || undefined,
+      memo: memo.trim() || undefined,
+      recurrence,
+    });
+
+    resetForm();
+  };
+
   const handleAdd = () => {
     const trimmedTitle = title.trim();
 
@@ -87,13 +112,45 @@ export default function TaskAddForm({
       return;
     }
 
-    onAdd(trimmedTitle, time, {
+    // 既存チェックを通った後に、
+    // 追加日に重なる予定がないか確認する
+    const candidate: Task = {
+      id: '',
+      title: trimmedTitle,
+      date,
+      startTime: time,
       endTime: endTime || undefined,
       memo: memo.trim() || undefined,
+      completed: false,
       recurrence,
-    });
+    };
 
-    resetForm();
+    const overlapping = findOverlappingTask(
+      tasks,
+      candidate,
+      date
+    );
+
+    if (overlapping) {
+      Alert.alert(
+        '予定が重なっています',
+        'このまま保存しますか？',
+        [
+          {
+            text: 'キャンセル',
+            style: 'cancel',
+          },
+          {
+            text: '保存する',
+            onPress: () =>
+              performAdd(trimmedTitle),
+          },
+        ]
+      );
+      return;
+    }
+
+    performAdd(trimmedTitle);
   };
 
   const handleCancel = () => {

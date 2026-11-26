@@ -13,12 +13,23 @@ import {
 import DatePickerModal from '@/components/date-picker-modal';
 import RecurrencePicker from '@/components/recurrence-picker';
 import TimePickerModal from '@/components/time-picker-modal';
-import type { TaskOptions } from '@/contexts/task-context';
+import {
+  useTasks,
+  type TaskOptions,
+} from '@/contexts/task-context';
 import { useTheme } from '@/hooks/use-theme';
 import type { Recurrence, Task } from '@/types/task';
+import { isCompletedOn } from '@/utils/recurrence';
+import { findOverlappingTask } from '@/utils/tasks';
 
 type TaskEditModalProps = {
   task: Task | null;
+
+  // 呼び出し側で表示されていた出現日
+  // （今日タブ＝今日、カレンダー＝選択日、
+  //   検索結果＝表示されていた日付）
+  // 繰り返し予定の「この回だけ」操作に使う
+  occurrenceDate?: string | null;
 
   onClose: () => void;
 
@@ -32,6 +43,9 @@ type TaskEditModalProps = {
 
   onDelete: (id: string) => void;
 };
+
+// 繰り返し予定の適用範囲
+type EditScope = 'once' | 'all';
 
 // YYYY-MM-DD → YYYY年M月D日
 function formatDateLabel(date: string) {
@@ -52,11 +66,18 @@ function formatDateLabel(date: string) {
 
 export default function TaskEditModal({
   task,
+  occurrenceDate,
   onClose,
   onSave,
   onDelete,
 }: TaskEditModalProps) {
   const theme = useTheme();
+
+  const {
+    tasks,
+    addTaskObject,
+    skipOccurrence,
+  } = useTasks();
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -66,6 +87,11 @@ export default function TaskEditModal({
 
   const [recurrence, setRecurrence] =
     useState<Recurrence | undefined>(undefined);
+
+  // 繰り返し予定の適用範囲
+  // （「この回だけ」か「すべての回」か）
+  const [scope, setScope] =
+    useState<EditScope>('all');
 
   // 予定名が未入力のまま保存しようとした
   const [titleError, setTitleError] =
@@ -107,12 +133,86 @@ export default function TaskEditModal({
       setEndTime(task.endTime ?? '');
       setMemo(task.memo ?? '');
       setRecurrence(task.recurrence);
+
+      // 出現日（開始日以外）から開いた
+      // 繰り返し予定は「この回だけ」を
+      // 初期値にする
+      setScope(
+        task.recurrence &&
+          occurrenceDate &&
+          occurrenceDate !== task.date
+          ? 'once'
+          : 'all'
+      );
     }
-  }, [task]);
+  }, [task, occurrenceDate]);
+
+  // 繰り返し予定を特定の出現日から
+  // 開いた場合のみ、適用範囲を選べる
+  const canChooseScope =
+    task !== null &&
+    !!task.recurrence &&
+    !!occurrenceDate;
+
+  const isOnceScope =
+    canChooseScope && scope === 'once';
 
   // -----------------------------
   // 保存
   // -----------------------------
+
+  // 実際の保存処理
+  // （重なり警告で「保存する」を選んだ
+  //   場合もここを通る）
+  const performSave = (
+    trimmedTitle: string
+  ) => {
+    if (task === null) {
+      return;
+    }
+
+    const options: TaskOptions = {
+      endTime: endTime || undefined,
+      memo: memo.trim() || undefined,
+      recurrence,
+    };
+
+    if (isOnceScope && occurrenceDate) {
+      // 「この回だけ」：元の予定の出現を
+      // スキップし、フォーム内容で
+      // 単発予定を作成する
+      const wasCompleted = isCompletedOn(
+        task,
+        occurrenceDate
+      );
+
+      skipOccurrence(
+        task.id,
+        occurrenceDate,
+        { removeCompleted: wasCompleted }
+      );
+
+      addTaskObject({
+        id: Date.now().toString(),
+        title: trimmedTitle,
+        date: occurrenceDate,
+        startTime: time,
+        endTime: endTime || undefined,
+        memo: memo.trim() || undefined,
+        completed: wasCompleted,
+      });
+    } else {
+      onSave(
+        task.id,
+        trimmedTitle,
+        date,
+        time,
+        options
+      );
+    }
+
+    onClose();
+  };
 
   const handleSave = () => {
     if (task === null) {
@@ -139,19 +239,61 @@ export default function TaskEditModal({
       return;
     }
 
-    onSave(
-      task.id,
-      trimmedTitle,
-      date,
-      time,
-      {
-        endTime: endTime || undefined,
-        memo: memo.trim() || undefined,
-        recurrence,
-      }
+    // 既存チェックを通った後に、
+    // 同じ日に重なる予定がないか確認する
+    const candidate: Task = isOnceScope &&
+      occurrenceDate
+      ? {
+          ...task,
+          title: trimmedTitle,
+          date: occurrenceDate,
+          startTime: time,
+          endTime: endTime || undefined,
+          memo: memo.trim() || undefined,
+          recurrence: undefined,
+          completedDates: undefined,
+          skippedDates: undefined,
+        }
+      : {
+          ...task,
+          title: trimmedTitle,
+          date,
+          startTime: time,
+          endTime: endTime || undefined,
+          memo: memo.trim() || undefined,
+          recurrence,
+        };
+
+    const checkDate =
+      occurrenceDate ?? date;
+
+    const overlapping = findOverlappingTask(
+      tasks,
+      candidate,
+      checkDate,
+      task.id
     );
 
-    onClose();
+    if (overlapping) {
+      Alert.alert(
+        '予定が重なっています',
+        'このまま保存しますか？',
+        [
+          {
+            text: 'キャンセル',
+            style: 'cancel',
+          },
+          {
+            text: '保存する',
+            onPress: () =>
+              performSave(trimmedTitle),
+          },
+        ]
+      );
+      return;
+    }
+
+    performSave(trimmedTitle);
   };
 
   // -----------------------------
@@ -163,9 +305,48 @@ export default function TaskEditModal({
       return;
     }
 
+    // 繰り返し予定を特定の出現日から
+    // 開いた場合は、削除範囲を選べる
+    if (canChooseScope && occurrenceDate) {
+      Alert.alert(
+        '予定を削除',
+        `「${task.title}」を削除しますか？` +
+          '「すべての回を削除」を選ぶと、' +
+          '繰り返しの予定全体が削除されます。',
+        [
+          {
+            text: 'この回だけ削除',
+            onPress: () => {
+              skipOccurrence(
+                task.id,
+                occurrenceDate
+              );
+              onClose();
+            },
+          },
+          {
+            text: 'すべての回を削除',
+            style: 'destructive',
+            onPress: () => {
+              onDelete(task.id);
+              onClose();
+            },
+          },
+          {
+            text: 'キャンセル',
+            style: 'cancel',
+          },
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       '予定を削除',
-      `「${task.title}」を削除しますか？`,
+      task.recurrence
+        ? `「${task.title}」を削除しますか？` +
+          '繰り返しの予定全体が削除されます。'
+        : `「${task.title}」を削除しますか？`,
       [
         {
           text: 'キャンセル',
@@ -292,27 +473,121 @@ export default function TaskEditModal({
                 </Text>
               )}
 
-              {/* 日付 */}
+              {/* 適用範囲
+                  （繰り返し予定を出現日から
+                    開いた場合のみ） */}
+              {canChooseScope && (
+                <>
+                  <Text style={labelStyle}>
+                    適用範囲
+                  </Text>
+
+                  <View style={styles.scopeRow}>
+                    {(
+                      [
+                        {
+                          value: 'once',
+                          label: 'この回だけ',
+                        },
+                        {
+                          value: 'all',
+                          label: 'すべての回',
+                        },
+                      ] as {
+                        value: EditScope;
+                        label: string;
+                      }[]
+                    ).map((option) => {
+                      const selected =
+                        scope === option.value;
+
+                      return (
+                        <Pressable
+                          key={option.value}
+                          style={[
+                            styles.scopeChip,
+                            {
+                              borderColor:
+                                theme.border,
+                              backgroundColor:
+                                theme.inputBackground,
+                            },
+                            selected && {
+                              backgroundColor:
+                                theme.accent,
+                              borderColor:
+                                theme.accent,
+                            },
+                          ]}
+                          onPress={() =>
+                            setScope(option.value)
+                          }
+                        >
+                          <Text
+                            style={[
+                              styles.scopeChipText,
+                              {
+                                color:
+                                  theme.textSecondary,
+                              },
+                              selected && [
+                                styles
+                                  .scopeChipTextSelected,
+                                {
+                                  color:
+                                    theme.accentText,
+                                },
+                              ],
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              {/* 日付
+                  「この回だけ」の場合は出現日に
+                  固定し、変更できない */}
               <Text style={labelStyle}>
-                {recurrence ? '開始日' : '日付'}
+                {isOnceScope
+                  ? '日付'
+                  : recurrence
+                    ? '開始日'
+                    : '日付'}
               </Text>
 
-              <Pressable
-                style={selectButtonStyle}
-                onPress={() =>
-                  setDatePickerVisible(true)
-                }
-              >
-                <Text
-                  style={selectTextStyle(false)}
+              {isOnceScope && occurrenceDate ? (
+                <View style={selectButtonStyle}>
+                  <Text
+                    style={selectTextStyle(false)}
+                  >
+                    {formatDateLabel(
+                      occurrenceDate
+                    )}
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={selectButtonStyle}
+                  onPress={() =>
+                    setDatePickerVisible(true)
+                  }
                 >
-                  {formatDateLabel(date)}
-                </Text>
+                  <Text
+                    style={selectTextStyle(false)}
+                  >
+                    {formatDateLabel(date)}
+                  </Text>
 
-                <Text style={chevronStyle}>
-                  ›
-                </Text>
-              </Pressable>
+                  <Text style={chevronStyle}>
+                    ›
+                  </Text>
+                </Pressable>
+              )}
 
               {/* 開始時刻 */}
               <Text style={labelStyle}>
@@ -377,18 +652,24 @@ export default function TaskEditModal({
                 </Text>
               )}
 
-              {/* 繰り返し */}
-              <Text style={labelStyle}>
-                繰り返し
-              </Text>
+              {/* 繰り返し
+                  「この回だけ」の場合は
+                  単発予定になるため表示しない */}
+              {!isOnceScope && (
+                <>
+                  <Text style={labelStyle}>
+                    繰り返し
+                  </Text>
 
-              <RecurrencePicker
-                value={recurrence}
-                onChange={setRecurrence}
-              />
+                  <RecurrencePicker
+                    value={recurrence}
+                    onChange={setRecurrence}
+                  />
+                </>
+              )}
 
               {/* 繰り返し終了日 */}
-              {recurrence && (
+              {!isOnceScope && recurrence && (
                 <>
                   <Text style={labelStyle}>
                     繰り返し終了日
@@ -663,6 +944,29 @@ const styles = StyleSheet.create({
 
   chevron: {
     fontSize: 24,
+  },
+
+  // 適用範囲の切り替え
+  // （繰り返しピッカーと同じ見た目）
+  scopeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+
+  scopeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
+  scopeChipText: {
+    fontSize: 14,
+  },
+
+  scopeChipTextSelected: {
+    fontWeight: '600',
   },
 
   untilRow: {

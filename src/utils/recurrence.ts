@@ -48,6 +48,22 @@ export function addDays(
   return formatDate(result);
 }
 
+// YYYY-MM-DD 形式であり、かつ
+// 実在する日付かどうか
+// （例: 2026-02-30 は存在しないので false）
+// parseDate は存在しない日付を翌月などに
+// ずらして解釈するため、再フォーマットして
+// 元の文字列と一致するかで判定する
+export function isRealDateString(
+  value: string
+): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  return formatDate(parseDate(value)) === value;
+}
+
 // -----------------------------------
 // 繰り返しの出現判定
 // -----------------------------------
@@ -64,6 +80,14 @@ export function occursOn(
 
   if (!task.recurrence) {
     return task.date === date;
+  }
+
+  // 「この回だけ」削除・分離した日付には
+  // 出現しない
+  if (
+    (task.skippedDates ?? []).includes(date)
+  ) {
+    return false;
   }
 
   const { freq, until } = task.recurrence;
