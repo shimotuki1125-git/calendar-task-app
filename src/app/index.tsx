@@ -21,8 +21,10 @@ import {
   taskForDate,
 } from '@/utils/recurrence';
 import {
+  sortSearchResults,
   sortTasksByDateTime,
   sortTasksByTime,
+  type SearchResultEntry,
 } from '@/utils/tasks';
 
 // YYYY-MM-DD → M月D日
@@ -45,6 +47,8 @@ export default function HomeScreen() {
     toggleTask,
     updateTask,
     deleteTask,
+    moveTasksToDate,
+    completeTasks,
   } = useTasks();
 
   const theme = useTheme();
@@ -79,6 +83,17 @@ export default function HomeScreen() {
   // 編集中の予定
   const [editingTask, setEditingTask] =
     useState<Task | null>(null);
+
+  // 編集を開いたときに表示されていた出現日
+  // （繰り返し予定の「この回だけ」操作用）
+  const [
+    editingOccurrenceDate,
+    setEditingOccurrenceDate,
+  ] = useState<string | null>(null);
+
+  // 期限切れ欄をすべて表示しているか
+  const [overdueExpanded, setOverdueExpanded] =
+    useState(false);
 
   // 検索キーワード
   const [searchQuery, setSearchQuery] =
@@ -119,35 +134,91 @@ export default function HomeScreen() {
     )
   );
 
-  // 検索結果：全予定からタイトル・メモで
-  // 部分一致を探し、日付昇順＋時刻順に並べる
-  // 繰り返し予定は元の予定を1件として扱う
-  const searchResults = isSearching
-    ? sortTasksByDateTime(
-        tasks.filter((task) => {
-          const query = searchQuery
-            .trim()
-            .toLowerCase();
+  // 期限切れが多い場合は先頭5件だけ表示し、
+  // 残りは「ほかN件を表示」で展開する
+  const OVERDUE_PREVIEW_COUNT = 5;
 
-          return (
-            task.title
-              .toLowerCase()
-              .includes(query) ||
-            (task.memo ?? '')
-              .toLowerCase()
-              .includes(query)
-          );
-        })
-      )
-    : [];
+  const visibleOverdueTasks =
+    overdueExpanded ||
+    overdueTasks.length <= OVERDUE_PREVIEW_COUNT
+      ? overdueTasks
+      : overdueTasks.slice(
+          0,
+          OVERDUE_PREVIEW_COUNT
+        );
+
+  // 期限切れをすべて今日へ移す
+  const handleMoveOverdueToToday = () => {
+    moveTasksToDate(
+      overdueTasks.map((task) => task.id),
+      today
+    );
+  };
+
+  // 期限切れをすべて完了にする
+  const handleCompleteOverdue = () => {
+    completeTasks(
+      overdueTasks.map((task) => task.id)
+    );
+  };
+
+  // 検索結果：全予定からタイトル・メモで
+  // 部分一致を探す
+  // 繰り返し予定は元の予定を1件として扱い、
+  // 表示される日付（繰り返しは次回出現日）の
+  // 昇順＋時刻順に並べる
+  const searchResults: SearchResultEntry[] =
+    isSearching
+      ? sortSearchResults(
+          tasks
+            .filter((task) => {
+              const query = searchQuery
+                .trim()
+                .toLowerCase();
+
+              return (
+                task.title
+                  .toLowerCase()
+                  .includes(query) ||
+                (task.memo ?? '')
+                  .toLowerCase()
+                  .includes(query)
+              );
+            })
+            .map((task) => ({
+              task,
+
+              // 繰り返し予定は開始日ではなく
+              // 今日以降の次回出現日を表示
+              // （次回出現がない場合は開始日）
+              displayDate: task.recurrence
+                ? (nextOccurrenceOnOrAfter(
+                    task,
+                    today
+                  ) ?? task.date)
+                : task.date,
+            }))
+        )
+      : [];
 
   // 編集は元の予定に対して行う
-  const openEditor = (displayTask: Task) => {
+  // あわせて、表示されていた出現日を
+  // モーダルへ渡す（「この回だけ」操作用）
+  const openEditor = (
+    displayTask: Task,
+    occurrenceDate: string
+  ) => {
     const original = tasks.find(
       (task) => task.id === displayTask.id
     );
 
     setEditingTask(original ?? displayTask);
+    setEditingOccurrenceDate(occurrenceDate);
+  };
+
+  const closeEditor = () => {
+    setEditingTask(null);
+    setEditingOccurrenceDate(null);
   };
 
   const renderRow = (task: Task) => (
@@ -155,7 +226,7 @@ export default function HomeScreen() {
       key={task.id}
       task={task}
       onToggle={() => toggleTask(task.id, today)}
-      onEdit={() => openEditor(task)}
+      onEdit={() => openEditor(task, today)}
     />
   );
 
@@ -168,34 +239,30 @@ export default function HomeScreen() {
       onToggle={() =>
         toggleTask(task.id, task.date)
       }
-      onEdit={() => openEditor(task)}
+      onEdit={() => openEditor(task, task.date)}
     />
   );
 
   // 検索結果の行
   // （日付・時刻・タイトル・メモを表示）
-  const renderSearchResult = (task: Task) => {
+  const renderSearchResult = (
+    entry: SearchResultEntry
+  ) => {
+    const { task, displayDate } = entry;
+
     const timeLabel = task.startTime
       ? task.endTime
         ? `${task.startTime}〜${task.endTime}`
         : task.startTime
       : '―';
 
-    // 繰り返し予定は開始日ではなく
-    // 今日以降の次回出現日を表示する
-    // （次回出現がない場合は開始日を表示）
-    const displayDate = task.recurrence
-      ? (nextOccurrenceOnOrAfter(
-          task,
-          today
-        ) ?? task.date)
-      : task.date;
-
     return (
       <Pressable
         key={task.id}
         style={styles.searchResult}
-        onPress={() => openEditor(task)}
+        onPress={() =>
+          openEditor(task, displayDate)
+        }
       >
         <View style={styles.searchMeta}>
           <Text
@@ -338,19 +405,85 @@ export default function HomeScreen() {
             {/* 期限切れ（ある場合のみ表示） */}
             {overdueTasks.length > 0 && (
               <>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    { color: theme.error },
-                  ]}
-                >
-                  期限切れ
-                </Text>
+                <View style={styles.overdueHeader}>
+                  <Text
+                    style={[
+                      styles.sectionTitle,
+                      { color: theme.error },
+                    ]}
+                  >
+                    期限切れ
+                  </Text>
+
+                  <View
+                    style={styles.overdueActions}
+                  >
+                    <Pressable
+                      style={styles.overdueButton}
+                      onPress={
+                        handleMoveOverdueToToday
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.overdueButtonText,
+                          { color: theme.text },
+                        ]}
+                      >
+                        今日へ移す
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={styles.overdueButton}
+                      onPress={() =>
+                        handleCompleteOverdue()
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.overdueButtonText,
+                          { color: theme.text },
+                        ]}
+                      >
+                        すべて完了
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
 
                 <View style={lineStyle} />
 
-                {overdueTasks.map(
+                {visibleOverdueTasks.map(
                   renderOverdueRow
+                )}
+
+                {/* 6件以上ある場合は
+                    展開・折りたたみできる */}
+                {overdueTasks.length >
+                  OVERDUE_PREVIEW_COUNT && (
+                  <Pressable
+                    style={styles.overdueToggle}
+                    onPress={() =>
+                      setOverdueExpanded(
+                        (current) => !current
+                      )
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.overdueToggleText,
+                        {
+                          color:
+                            theme.textSecondary,
+                        },
+                      ]}
+                    >
+                      {overdueExpanded
+                        ? '折りたたむ'
+                        : `ほか${overdueTasks.length - OVERDUE_PREVIEW_COUNT}件を表示`}
+                    </Text>
+                  </Pressable>
                 )}
               </>
             )}
@@ -382,20 +515,25 @@ export default function HomeScreen() {
 
             {incompleteTasks.map(renderRow)}
 
-            {/* 完了 */}
-            <Text
-              style={[
-                styles.sectionTitle,
-                styles.completedSection,
-                { color: theme.text },
-              ]}
-            >
-              完了
-            </Text>
+            {/* 完了（1件以上ある場合のみ
+                見出しごと表示する） */}
+            {completedTasks.length > 0 && (
+              <>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    styles.completedSection,
+                    { color: theme.text },
+                  ]}
+                >
+                  完了
+                </Text>
 
-            <View style={lineStyle} />
+                <View style={lineStyle} />
 
-            {completedTasks.map(renderRow)}
+                {completedTasks.map(renderRow)}
+              </>
+            )}
           </ScrollView>
         </>
       )}
@@ -408,6 +546,7 @@ export default function HomeScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <TaskAddForm
+            date={today}
             onAdd={(title, time, options) => {
               addTask(
                 title,
@@ -451,9 +590,8 @@ export default function HomeScreen() {
       {/* 編集画面 */}
       <TaskEditModal
         task={editingTask}
-        onClose={() =>
-          setEditingTask(null)
-        }
+        occurrenceDate={editingOccurrenceDate}
+        onClose={closeEditor}
         onSave={updateTask}
         onDelete={deleteTask}
       />
@@ -510,6 +648,37 @@ const styles = StyleSheet.create({
 
   completedSection: {
     marginTop: 28,
+  },
+
+  // 期限切れ欄の見出し行と一括操作
+  overdueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  overdueActions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+
+  overdueButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+
+  overdueButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  overdueToggle: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+
+  overdueToggleText: {
+    fontSize: 14,
   },
 
   // 期限切れ欄がある場合の

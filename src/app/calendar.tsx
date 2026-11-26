@@ -16,6 +16,7 @@ import { useTasks } from '@/contexts/task-context';
 import { useTheme } from '@/hooks/use-theme';
 import type { Task } from '@/types/task';
 import {
+  isCompletedOn,
   occursOn,
   taskForDate,
 } from '@/utils/recurrence';
@@ -74,6 +75,13 @@ export default function CalendarScreen() {
 
   const [editingTask, setEditingTask] =
     useState<Task | null>(null);
+
+  // 編集を開いたときに表示されていた出現日
+  // （繰り返し予定の「この回だけ」操作用）
+  const [
+    editingOccurrenceDate,
+    setEditingOccurrenceDate,
+  ] = useState<string | null>(null);
 
   // -----------------------------
   // 開始曜日
@@ -238,24 +246,42 @@ export default function CalendarScreen() {
   };
 
   // -----------------------------
-  // 予定がある日か
+  // その日のドットの状態
+  // 'none'：予定なし
+  // 'incomplete'：未完了の予定が残っている
+  // 'allCompleted'：出現する予定が
+  //   すべて完了している
   // -----------------------------
 
-  const hasTasks = (day: number) => {
+  const getDotState = (
+    day: number
+  ): 'none' | 'incomplete' | 'allCompleted' => {
     const date = formatDate(
       year,
       month,
       day
     );
 
-    return tasks.some((task) =>
+    const dayTasks = tasks.filter((task) =>
       occursOn(task, date)
     );
+
+    if (dayTasks.length === 0) {
+      return 'none';
+    }
+
+    return dayTasks.every((task) =>
+      isCompletedOn(task, date)
+    )
+      ? 'allCompleted'
+      : 'incomplete';
   };
 
   // -----------------------------
   // 編集画面を開く
   // （表示用ではなく元の予定を渡す）
+  // あわせて選択中の日付を出現日として
+  // モーダルへ渡す（「この回だけ」操作用）
   // -----------------------------
 
   const openEditor = (displayTask: Task) => {
@@ -264,6 +290,12 @@ export default function CalendarScreen() {
     );
 
     setEditingTask(original ?? displayTask);
+    setEditingOccurrenceDate(selectedDate);
+  };
+
+  const closeEditor = () => {
+    setEditingTask(null);
+    setEditingOccurrenceDate(null);
   };
 
   // -----------------------------
@@ -366,6 +398,11 @@ export default function CalendarScreen() {
           const selected =
             day === selectedDay;
 
+          const dotState =
+            day !== null
+              ? getDotState(day)
+              : 'none';
+
           return (
             <View
               key={index}
@@ -406,13 +443,20 @@ export default function CalendarScreen() {
                     {day}
                   </Text>
 
-                  {hasTasks(day) && (
+                  {dotState !== 'none' && (
                     <View
                       style={[
                         styles.taskDot,
                         {
+                          // すべて完了した日は
+                          // 薄い色にして、
+                          // 未完了が残る日と
+                          // 見分けられるようにする
                           backgroundColor:
-                            theme.textSecondary,
+                            dotState ===
+                            'allCompleted'
+                              ? theme.textTertiary
+                              : theme.textSecondary,
                         },
 
                         selected && {
@@ -482,6 +526,7 @@ export default function CalendarScreen() {
         <View style={styles.formContainer}>
           <TaskAddForm
             showTitle={false}
+            date={selectedDate}
             onAdd={(title, time, options) => {
               addTask(
                 title,
@@ -560,9 +605,8 @@ export default function CalendarScreen() {
       {/* 編集モーダル */}
       <TaskEditModal
         task={editingTask}
-        onClose={() =>
-          setEditingTask(null)
-        }
+        occurrenceDate={editingOccurrenceDate}
+        onClose={closeEditor}
         onSave={updateTask}
         onDelete={deleteTask}
       />

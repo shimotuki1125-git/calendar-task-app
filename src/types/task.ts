@@ -39,4 +39,8 @@ export type Task = {
   // 繰り返し予定の日付ごとの完了状態
   // 完了した日付 (YYYY-MM-DD) の一覧
   completedDates?: string[];
+
+  // 繰り返し予定で「この回だけ」削除・分離した日付
+  // この日付 (YYYY-MM-DD) には出現しない
+  skippedDates?: string[];
 };
