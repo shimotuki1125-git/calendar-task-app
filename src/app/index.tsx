@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -123,7 +124,11 @@ export default function HomeScreen() {
       {/* 予定追加フォーム */}
       {showForm && (
         <View style={styles.formContainer}>
-          <TaskAddForm
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <TaskAddForm
             onAdd={(title, time, options) => {
               addTask(
                 title,
@@ -137,7 +142,8 @@ export default function HomeScreen() {
             onCancel={() =>
               setShowForm(false)
             }
-          />
+            />
+          </ScrollView>
         </View>
       )}
 
@@ -199,10 +205,14 @@ const styles = StyleSheet.create({
   },
 
   // 予定追加フォームの位置
+  // 上端も固定して高さを制限し、
+  // フォームが画面より高い場合は
+  // 内側でスクロールできるようにする
   formContainer: {
     position: 'absolute',
     left: 24,
     right: 24,
+    top: 40,
     bottom: 30,
   },
 
