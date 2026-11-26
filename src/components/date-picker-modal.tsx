@@ -8,6 +8,8 @@ import {
   View,
 } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
+
 const ITEM_HEIGHT = 50;
 
 type DatePickerModalProps = {
@@ -35,6 +37,8 @@ export default function DatePickerModal({
   onClose,
   onConfirm,
 }: DatePickerModalProps) {
+  const theme = useTheme();
+
   const currentYear = new Date().getFullYear();
 
   const years = useMemo(
@@ -213,15 +217,30 @@ export default function DatePickerModal({
           onPress={onClose}
         />
 
-        <View style={styles.container}>
-          <Text style={styles.title}>
+        <View
+          style={[
+            styles.container,
+            { backgroundColor: theme.background },
+          ]}
+        >
+          <Text
+            style={[
+              styles.title,
+              { color: theme.text },
+            ]}
+          >
             日付を選択
           </Text>
 
           <View style={styles.pickerArea}>
             <View
               pointerEvents="none"
-              style={styles.selectionBox}
+              style={[
+                styles.selectionBox,
+                {
+                  backgroundColor: theme.selection,
+                },
+              ]}
             />
 
             {/* 年 */}
@@ -253,8 +272,11 @@ export default function DatePickerModal({
                   <Text
                     style={[
                       styles.itemText,
-                      year === item &&
+                      { color: theme.textTertiary },
+                      year === item && [
                         styles.selectedText,
+                        { color: theme.text },
+                      ],
                     ]}
                   >
                     {item}年
@@ -292,8 +314,11 @@ export default function DatePickerModal({
                   <Text
                     style={[
                       styles.itemText,
-                      month === item &&
+                      { color: theme.textTertiary },
+                      month === item && [
                         styles.selectedText,
+                        { color: theme.text },
+                      ],
                     ]}
                   >
                     {item}月
@@ -331,8 +356,11 @@ export default function DatePickerModal({
                   <Text
                     style={[
                       styles.itemText,
-                      day === item &&
+                      { color: theme.textTertiary },
+                      day === item && [
                         styles.selectedText,
+                        { color: theme.text },
+                      ],
                     ]}
                   >
                     {item}日
@@ -347,16 +375,29 @@ export default function DatePickerModal({
               style={styles.cancelButton}
               onPress={onClose}
             >
-              <Text style={styles.cancelText}>
+              <Text
+                style={[
+                  styles.cancelText,
+                  { color: theme.textSecondary },
+                ]}
+              >
                 キャンセル
               </Text>
             </Pressable>
 
             <Pressable
-              style={styles.confirmButton}
+              style={[
+                styles.confirmButton,
+                { backgroundColor: theme.accent },
+              ]}
               onPress={handleConfirm}
             >
-              <Text style={styles.confirmText}>
+              <Text
+                style={[
+                  styles.confirmText,
+                  { color: theme.accentText },
+                ]}
+              >
                 完了
               </Text>
             </Pressable>
@@ -379,7 +420,6 @@ const styles = StyleSheet.create({
   },
 
   container: {
-    backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 24,
@@ -408,7 +448,6 @@ const styles = StyleSheet.create({
     left: 10,
     right: 10,
     height: ITEM_HEIGHT,
-    backgroundColor: '#f3f3f3',
     borderRadius: 10,
   },
 
@@ -434,13 +473,11 @@ const styles = StyleSheet.create({
 
   itemText: {
     fontSize: 17,
-    color: '#aaaaaa',
   },
 
   selectedText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#222222',
   },
 
   buttons: {
@@ -457,18 +494,15 @@ const styles = StyleSheet.create({
 
   cancelText: {
     fontSize: 16,
-    color: '#666666',
   },
 
   confirmButton: {
-    backgroundColor: '#222222',
     paddingHorizontal: 22,
     paddingVertical: 10,
     borderRadius: 9,
   },
 
   confirmText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },

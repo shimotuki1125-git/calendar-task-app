@@ -51,6 +51,11 @@ type TaskContextType = {
   ) => void;
 
   deleteTask: (id: string) => void;
+
+  // バックアップの読み込み用：
+  // 予定をすべて置き換える
+  // （保存と通知の同期は既存の仕組みで連動する）
+  replaceTasks: (tasks: Task[]) => void;
 };
 
 const TaskContext =
@@ -238,6 +243,14 @@ export function TaskProvider({
     );
   };
 
+  // -----------------------------
+  // 予定をすべて置き換え
+  // -----------------------------
+
+  const replaceTasks = (nextTasks: Task[]) => {
+    setTasks(nextTasks);
+  };
+
   return (
     <TaskContext.Provider
       value={{
@@ -247,6 +260,7 @@ export function TaskProvider({
         toggleTask,
         updateTask,
         deleteTask,
+        replaceTasks,
       }}
     >
       {children}

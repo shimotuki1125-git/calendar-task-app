@@ -14,6 +14,7 @@ import DatePickerModal from '@/components/date-picker-modal';
 import RecurrencePicker from '@/components/recurrence-picker';
 import TimePickerModal from '@/components/time-picker-modal';
 import type { TaskOptions } from '@/contexts/task-context';
+import { useTheme } from '@/hooks/use-theme';
 import type { Recurrence, Task } from '@/types/task';
 
 type TaskEditModalProps = {
@@ -55,6 +56,8 @@ export default function TaskEditModal({
   onSave,
   onDelete,
 }: TaskEditModalProps) {
+  const theme = useTheme();
+
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -164,6 +167,39 @@ export default function TaskEditModal({
     );
   };
 
+  // テーマ色を適用した共通スタイル
+  const labelStyle = [
+    styles.label,
+    { color: theme.textSecondary },
+  ];
+
+  const inputColors = {
+    backgroundColor: theme.inputBackground,
+    borderColor: theme.border,
+    color: theme.text,
+  };
+
+  const selectButtonStyle = [
+    styles.selectButton,
+    {
+      backgroundColor: theme.inputBackground,
+      borderColor: theme.border,
+    },
+  ];
+
+  const selectTextStyle = (
+    isPlaceholder: boolean
+  ) => [
+    styles.selectText,
+    { color: theme.text },
+    isPlaceholder && { color: theme.textTertiary },
+  ];
+
+  const chevronStyle = [
+    styles.chevron,
+    { color: theme.textTertiary },
+  ];
+
   return (
     <>
       {/* =========================
@@ -177,8 +213,18 @@ export default function TaskEditModal({
         onRequestClose={onClose}
       >
         <View style={styles.modalBackground}>
-          <View style={styles.modal}>
-            <Text style={styles.title}>
+          <View
+            style={[
+              styles.modal,
+              { backgroundColor: theme.background },
+            ]}
+          >
+            <Text
+              style={[
+                styles.title,
+                { color: theme.text },
+              ]}
+            >
               予定を編集
             </Text>
 
@@ -187,15 +233,18 @@ export default function TaskEditModal({
               showsVerticalScrollIndicator={false}
             >
               {/* 予定名 */}
-              <Text style={styles.label}>
+              <Text style={labelStyle}>
                 予定名
               </Text>
 
               <TextInput
                 style={[
                   styles.input,
-                  titleError &&
+                  inputColors,
+                  titleError && [
                     styles.inputError,
+                    { borderColor: theme.error },
+                  ],
                 ]}
                 value={title}
                 onChangeText={(text) => {
@@ -208,89 +257,92 @@ export default function TaskEditModal({
               />
 
               {titleError && (
-                <Text style={styles.errorText}>
+                <Text
+                  style={[
+                    styles.errorText,
+                    { color: theme.error },
+                  ]}
+                >
                   予定名を入力してください
                 </Text>
               )}
 
               {/* 日付 */}
-              <Text style={styles.label}>
+              <Text style={labelStyle}>
                 {recurrence ? '開始日' : '日付'}
               </Text>
 
               <Pressable
-                style={styles.selectButton}
+                style={selectButtonStyle}
                 onPress={() =>
                   setDatePickerVisible(true)
                 }
               >
-                <Text style={styles.selectText}>
+                <Text
+                  style={selectTextStyle(false)}
+                >
                   {formatDateLabel(date)}
                 </Text>
 
-                <Text style={styles.chevron}>
+                <Text style={chevronStyle}>
                   ›
                 </Text>
               </Pressable>
 
               {/* 開始時刻 */}
-              <Text style={styles.label}>
+              <Text style={labelStyle}>
                 開始時刻
               </Text>
 
               <Pressable
-                style={styles.selectButton}
+                style={selectButtonStyle}
                 onPress={() =>
                   setTimePickerVisible(true)
                 }
               >
                 <Text
-                  style={[
-                    styles.selectText,
-                    time === '' &&
-                      styles.placeholderText,
-                  ]}
+                  style={selectTextStyle(
+                    time === ''
+                  )}
                 >
                   {time === ''
                     ? '時刻なし'
                     : time}
                 </Text>
 
-                <Text style={styles.chevron}>
+                <Text style={chevronStyle}>
                   ›
                 </Text>
               </Pressable>
 
               {/* 終了時刻 */}
-              <Text style={styles.label}>
+              <Text style={labelStyle}>
                 終了時刻
               </Text>
 
               <Pressable
-                style={styles.selectButton}
+                style={selectButtonStyle}
                 onPress={() =>
                   setEndTimePickerVisible(true)
                 }
               >
                 <Text
-                  style={[
-                    styles.selectText,
-                    endTime === '' &&
-                      styles.placeholderText,
-                  ]}
+                  style={selectTextStyle(
+                    endTime === ''
+                  )}
                 >
                   {endTime === ''
                     ? '時刻なし'
                     : endTime}
                 </Text>
 
-                <Text style={styles.chevron}>
+                <Text style={chevronStyle}>
                   ›
                 </Text>
               </Pressable>
 
               {/* 繰り返し */}
-              <Text style={styles.label}>
+              <Text style={labelStyle}>
                 繰り返し
               </Text>
 
@@ -302,14 +354,14 @@ export default function TaskEditModal({
               {/* 繰り返し終了日 */}
               {recurrence && (
                 <>
-                  <Text style={styles.label}>
+                  <Text style={labelStyle}>
                     繰り返し終了日
                   </Text>
 
                   <View style={styles.untilRow}>
                     <Pressable
                       style={[
-                        styles.selectButton,
+                        ...selectButtonStyle,
                         styles.untilButton,
                       ]}
                       onPress={() =>
@@ -317,11 +369,9 @@ export default function TaskEditModal({
                       }
                     >
                       <Text
-                        style={[
-                          styles.selectText,
-                          !recurrence.until &&
-                            styles.placeholderText,
-                        ]}
+                        style={selectTextStyle(
+                          !recurrence.until
+                        )}
                       >
                         {recurrence.until
                           ? formatDateLabel(
@@ -330,7 +380,7 @@ export default function TaskEditModal({
                           : '無期限'}
                       </Text>
 
-                      <Text style={styles.chevron}>
+                      <Text style={chevronStyle}>
                         ›
                       </Text>
                     </Pressable>
@@ -345,7 +395,15 @@ export default function TaskEditModal({
                           })
                         }
                       >
-                        <Text style={styles.clearText}>
+                        <Text
+                          style={[
+                            styles.clearText,
+                            {
+                              color:
+                                theme.textSecondary,
+                            },
+                          ]}
+                        >
                           解除
                         </Text>
                       </Pressable>
@@ -355,7 +413,7 @@ export default function TaskEditModal({
               )}
 
               {/* メモ */}
-              <Text style={styles.label}>
+              <Text style={labelStyle}>
                 メモ
               </Text>
 
@@ -363,10 +421,14 @@ export default function TaskEditModal({
                 style={[
                   styles.input,
                   styles.memoInput,
+                  inputColors,
                 ]}
                 value={memo}
                 onChangeText={setMemo}
                 placeholder="メモ（任意）"
+                placeholderTextColor={
+                  theme.textTertiary
+                }
                 multiline
               />
             </ScrollView>
@@ -377,7 +439,12 @@ export default function TaskEditModal({
                 style={styles.deleteButton}
                 onPress={handleDelete}
               >
-                <Text style={styles.deleteText}>
+                <Text
+                  style={[
+                    styles.deleteText,
+                    { color: theme.danger },
+                  ]}
+                >
                   削除
                 </Text>
               </Pressable>
@@ -387,16 +454,30 @@ export default function TaskEditModal({
                   style={styles.cancelButton}
                   onPress={onClose}
                 >
-                  <Text>
+                  <Text
+                    style={{
+                      color: theme.textSecondary,
+                    }}
+                  >
                     キャンセル
                   </Text>
                 </Pressable>
 
                 <Pressable
-                  style={styles.saveButton}
+                  style={[
+                    styles.saveButton,
+                    {
+                      backgroundColor: theme.accent,
+                    },
+                  ]}
                   onPress={handleSave}
                 >
-                  <Text style={styles.saveText}>
+                  <Text
+                    style={[
+                      styles.saveText,
+                      { color: theme.accentText },
+                    ]}
+                  >
                     保存
                   </Text>
                 </Pressable>
@@ -483,7 +564,6 @@ const styles = StyleSheet.create({
   },
 
   modal: {
-    backgroundColor: '#ffffff',
     borderRadius: 18,
     padding: 20,
     maxHeight: '88%',
@@ -501,14 +581,11 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 14,
-    color: '#666666',
     marginBottom: 6,
   },
 
   input: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#dddddd',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 11,
@@ -517,13 +594,11 @@ const styles = StyleSheet.create({
   },
 
   inputError: {
-    borderColor: '#d64545',
     marginBottom: 6,
   },
 
   errorText: {
     fontSize: 13,
-    color: '#d64545',
     marginBottom: 14,
   },
 
@@ -534,9 +609,7 @@ const styles = StyleSheet.create({
 
   selectButton: {
     minHeight: 48,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#dddddd',
     borderRadius: 10,
     paddingHorizontal: 12,
     marginBottom: 14,
@@ -548,16 +621,10 @@ const styles = StyleSheet.create({
 
   selectText: {
     fontSize: 16,
-    color: '#222222',
-  },
-
-  placeholderText: {
-    color: '#999999',
   },
 
   chevron: {
     fontSize: 24,
-    color: '#aaaaaa',
   },
 
   untilRow: {
@@ -578,7 +645,6 @@ const styles = StyleSheet.create({
 
   clearText: {
     fontSize: 15,
-    color: '#666666',
   },
 
   buttons: {
@@ -600,7 +666,6 @@ const styles = StyleSheet.create({
   },
 
   deleteText: {
-    color: '#d32f2f',
     fontSize: 16,
   },
 
@@ -610,14 +675,12 @@ const styles = StyleSheet.create({
   },
 
   saveButton: {
-    backgroundColor: '#222222',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 9,
   },
 
   saveText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
 });

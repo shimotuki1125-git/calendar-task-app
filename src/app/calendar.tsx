@@ -13,11 +13,13 @@ import TaskEditModal from '@/components/task-edit-modal';
 import TaskRow from '@/components/task-row';
 import { useSettings } from '@/contexts/settings-context';
 import { useTasks } from '@/contexts/task-context';
+import { useTheme } from '@/hooks/use-theme';
 import type { Task } from '@/types/task';
 import {
   occursOn,
   taskForDate,
 } from '@/utils/recurrence';
+import { sortTasksByTime } from '@/utils/tasks';
 
 const WEEKDAY_DATA = [
   { label: '日', value: 'sunday', number: 0 },
@@ -51,6 +53,8 @@ export default function CalendarScreen() {
   } = useTasks();
 
   const { weekStart } = useSettings();
+
+  const theme = useTheme();
 
   const today = new Date();
 
@@ -152,15 +156,19 @@ export default function CalendarScreen() {
       taskForDate(task, selectedDate)
     );
 
-  const incompleteTasks =
+  // 完了・未完了の各グループ内で
+  // 時刻順に並べる（時刻なしは最後尾）
+  const incompleteTasks = sortTasksByTime(
     selectedTasks.filter(
       (task) => !task.completed
-    );
+    )
+  );
 
-  const completedTasks =
+  const completedTasks = sortTasksByTime(
     selectedTasks.filter(
       (task) => task.completed
-    );
+    )
+  );
 
   // -----------------------------
   // 前月
@@ -259,19 +267,34 @@ export default function CalendarScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: theme.background },
+      ]}
+    >
       {/* 年月 */}
       <View style={styles.header}>
         <Pressable
           style={styles.arrowButton}
           onPress={goPreviousMonth}
         >
-          <Text style={styles.arrow}>
+          <Text
+            style={[
+              styles.arrow,
+              { color: theme.text },
+            ]}
+          >
             ‹
           </Text>
         </Pressable>
 
-        <Text style={styles.monthTitle}>
+        <Text
+          style={[
+            styles.monthTitle,
+            { color: theme.text },
+          ]}
+        >
           {year}年{month + 1}月
         </Text>
 
@@ -279,7 +302,12 @@ export default function CalendarScreen() {
           style={styles.arrowButton}
           onPress={goNextMonth}
         >
-          <Text style={styles.arrow}>
+          <Text
+            style={[
+              styles.arrow,
+              { color: theme.text },
+            ]}
+          >
             ›
           </Text>
         </Pressable>
@@ -291,7 +319,10 @@ export default function CalendarScreen() {
           (weekday) => (
             <Text
               key={weekday.value}
-              style={styles.weekday}
+              style={[
+                styles.weekday,
+                { color: theme.textSecondary },
+              ]}
             >
               {weekday.label}
             </Text>
@@ -315,12 +346,17 @@ export default function CalendarScreen() {
                   style={[
                     styles.dayButton,
 
-                    selected &&
-                      styles.selectedDay,
+                    selected && {
+                      backgroundColor: theme.accent,
+                    },
 
                     isToday(day) &&
-                      !selected &&
-                      styles.today,
+                      !selected && [
+                        styles.today,
+                        {
+                          borderColor: theme.accent,
+                        },
+                      ],
                   ]}
                   onPress={() =>
                     handleSelectDay(day)
@@ -329,9 +365,12 @@ export default function CalendarScreen() {
                   <Text
                     style={[
                       styles.dayText,
+                      { color: theme.text },
 
-                      selected &&
+                      selected && [
                         styles.selectedDayText,
+                        { color: theme.accentText },
+                      ],
                     ]}
                   >
                     {day}
@@ -341,9 +380,15 @@ export default function CalendarScreen() {
                     <View
                       style={[
                         styles.taskDot,
+                        {
+                          backgroundColor:
+                            theme.textSecondary,
+                        },
 
-                        selected &&
-                          styles.taskDotSelected,
+                        selected && {
+                          backgroundColor:
+                            theme.accentText,
+                        },
                       ]}
                     />
                   )}
@@ -354,7 +399,12 @@ export default function CalendarScreen() {
         })}
       </View>
 
-      <View style={styles.divider} />
+      <View
+        style={[
+          styles.divider,
+          { backgroundColor: theme.border },
+        ]}
+      />
 
       {/* 日付見出し・フォーム・予定リストは
           スクロール可能にする（フォームが
@@ -370,7 +420,10 @@ export default function CalendarScreen() {
       {/* 選択中の日付 */}
       <View style={styles.selectedHeader}>
         <Text
-          style={styles.selectedDateTitle}
+          style={[
+            styles.selectedDateTitle,
+            { color: theme.text },
+          ]}
         >
           {month + 1}月{selectedDay}日
         </Text>
@@ -383,7 +436,12 @@ export default function CalendarScreen() {
             )
           }
         >
-          <Text style={styles.smallAddText}>
+          <Text
+            style={[
+              styles.smallAddText,
+              { color: theme.text },
+            ]}
+          >
             ＋
           </Text>
         </Pressable>
@@ -414,7 +472,12 @@ export default function CalendarScreen() {
       {/* 予定なし */}
       {selectedTasks.length === 0 &&
         !showForm && (
-          <Text style={styles.emptyText}>
+          <Text
+            style={[
+              styles.emptyText,
+              { color: theme.textTertiary },
+            ]}
+          >
             予定はありません
           </Text>
         )}
@@ -435,7 +498,10 @@ export default function CalendarScreen() {
       {completedTasks.length > 0 && (
         <>
           <Text
-            style={styles.completedLabel}
+            style={[
+              styles.completedLabel,
+              { color: theme.textSecondary },
+            ]}
           >
             完了
           </Text>
@@ -477,7 +543,6 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
     paddingHorizontal: 20,
     paddingTop: 20,
   },
@@ -514,7 +579,6 @@ const styles = StyleSheet.create({
     width: `${100 / 7}%`,
     textAlign: 'center',
     fontSize: 14,
-    color: '#777777',
   },
 
   calendar: {
@@ -543,15 +607,9 @@ const styles = StyleSheet.create({
 
   today: {
     borderWidth: 1,
-    borderColor: '#222222',
-  },
-
-  selectedDay: {
-    backgroundColor: '#222222',
   },
 
   selectedDayText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
 
@@ -561,16 +619,10 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#555555',
-  },
-
-  taskDotSelected: {
-    backgroundColor: '#ffffff',
   },
 
   divider: {
     height: 1,
-    backgroundColor: '#dddddd',
     marginTop: 18,
     marginBottom: 18,
   },
@@ -612,13 +664,11 @@ const styles = StyleSheet.create({
 
   emptyText: {
     marginTop: 18,
-    color: '#999999',
   },
 
   completedLabel: {
     marginTop: 14,
     marginBottom: 4,
     fontSize: 14,
-    color: '#777777',
   },
 });

@@ -10,6 +10,7 @@ import {
 import RecurrencePicker from '@/components/recurrence-picker';
 import TimePickerModal from '@/components/time-picker-modal';
 import type { TaskOptions } from '@/contexts/task-context';
+import { useTheme } from '@/hooks/use-theme';
 import type { Recurrence } from '@/types/task';
 
 type TaskAddFormProps = {
@@ -29,6 +30,8 @@ export default function TaskAddForm({
   onCancel,
   showTitle = true,
 }: TaskAddFormProps) {
+  const theme = useTheme();
+
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -84,24 +87,48 @@ export default function TaskAddForm({
 
   return (
     <>
-      <View style={styles.form}>
+      <View
+        style={[
+          styles.form,
+          { backgroundColor: theme.surface },
+        ]}
+      >
         {showTitle && (
-          <Text style={styles.formTitle}>
+          <Text
+            style={[
+              styles.formTitle,
+              { color: theme.text },
+            ]}
+          >
             新しい予定
           </Text>
         )}
 
         {/* 予定名 */}
-        <Text style={styles.label}>
+        <Text
+          style={[
+            styles.label,
+            { color: theme.textSecondary },
+          ]}
+        >
           予定名
         </Text>
 
         <TextInput
           style={[
             styles.input,
-            titleError && styles.inputError,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.border,
+              color: theme.text,
+            },
+            titleError && [
+              styles.inputError,
+              { borderColor: theme.error },
+            ],
           ]}
           placeholder="予定名"
+          placeholderTextColor={theme.textTertiary}
           value={title}
           onChangeText={(text) => {
             setTitle(text);
@@ -113,18 +140,34 @@ export default function TaskAddForm({
         />
 
         {titleError && (
-          <Text style={styles.errorText}>
+          <Text
+            style={[
+              styles.errorText,
+              { color: theme.error },
+            ]}
+          >
             予定名を入力してください
           </Text>
         )}
 
         {/* 開始時刻 */}
-        <Text style={styles.label}>
+        <Text
+          style={[
+            styles.label,
+            { color: theme.textSecondary },
+          ]}
+        >
           開始時刻
         </Text>
 
         <Pressable
-          style={styles.timeButton}
+          style={[
+            styles.timeButton,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.border,
+            },
+          ]}
           onPress={() =>
             setTimePickerVisible(true)
           }
@@ -132,8 +175,10 @@ export default function TaskAddForm({
           <Text
             style={[
               styles.timeText,
-              time === '' &&
-                styles.placeholderText,
+              { color: theme.text },
+              time === '' && {
+                color: theme.textTertiary,
+              },
             ]}
           >
             {time === ''
@@ -141,18 +186,34 @@ export default function TaskAddForm({
               : time}
           </Text>
 
-          <Text style={styles.chevron}>
+          <Text
+            style={[
+              styles.chevron,
+              { color: theme.textTertiary },
+            ]}
+          >
             ›
           </Text>
         </Pressable>
 
         {/* 終了時刻 */}
-        <Text style={styles.label}>
+        <Text
+          style={[
+            styles.label,
+            { color: theme.textSecondary },
+          ]}
+        >
           終了時刻
         </Text>
 
         <Pressable
-          style={styles.timeButton}
+          style={[
+            styles.timeButton,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.border,
+            },
+          ]}
           onPress={() =>
             setEndTimePickerVisible(true)
           }
@@ -160,8 +221,10 @@ export default function TaskAddForm({
           <Text
             style={[
               styles.timeText,
-              endTime === '' &&
-                styles.placeholderText,
+              { color: theme.text },
+              endTime === '' && {
+                color: theme.textTertiary,
+              },
             ]}
           >
             {endTime === ''
@@ -169,13 +232,23 @@ export default function TaskAddForm({
               : endTime}
           </Text>
 
-          <Text style={styles.chevron}>
+          <Text
+            style={[
+              styles.chevron,
+              { color: theme.textTertiary },
+            ]}
+          >
             ›
           </Text>
         </Pressable>
 
         {/* 繰り返し */}
-        <Text style={styles.label}>
+        <Text
+          style={[
+            styles.label,
+            { color: theme.textSecondary },
+          ]}
+        >
           繰り返し
         </Text>
 
@@ -185,13 +258,27 @@ export default function TaskAddForm({
         />
 
         {/* メモ */}
-        <Text style={styles.label}>
+        <Text
+          style={[
+            styles.label,
+            { color: theme.textSecondary },
+          ]}
+        >
           メモ
         </Text>
 
         <TextInput
-          style={[styles.input, styles.memoInput]}
+          style={[
+            styles.input,
+            styles.memoInput,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.border,
+              color: theme.text,
+            },
+          ]}
           placeholder="メモ（任意）"
+          placeholderTextColor={theme.textTertiary}
           value={memo}
           onChangeText={setMemo}
           multiline
@@ -203,16 +290,24 @@ export default function TaskAddForm({
             style={styles.cancelButton}
             onPress={handleCancel}
           >
-            <Text>
+            <Text style={{ color: theme.textSecondary }}>
               キャンセル
             </Text>
           </Pressable>
 
           <Pressable
-            style={styles.addButton}
+            style={[
+              styles.addButton,
+              { backgroundColor: theme.accent },
+            ]}
             onPress={handleAdd}
           >
-            <Text style={styles.addButtonText}>
+            <Text
+              style={[
+                styles.addButtonText,
+                { color: theme.accentText },
+              ]}
+            >
               追加
             </Text>
           </Pressable>
@@ -249,7 +344,6 @@ export default function TaskAddForm({
 const styles = StyleSheet.create({
   form: {
     padding: 18,
-    backgroundColor: '#f5f5f5',
     borderRadius: 16,
   },
 
@@ -261,14 +355,11 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 14,
-    color: '#666666',
     marginBottom: 6,
   },
 
   input: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#dddddd',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 11,
@@ -277,13 +368,11 @@ const styles = StyleSheet.create({
   },
 
   inputError: {
-    borderColor: '#d64545',
     marginBottom: 6,
   },
 
   errorText: {
     fontSize: 13,
-    color: '#d64545',
     marginBottom: 14,
   },
 
@@ -294,9 +383,7 @@ const styles = StyleSheet.create({
 
   timeButton: {
     minHeight: 48,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#dddddd',
     borderRadius: 10,
     paddingHorizontal: 12,
     marginBottom: 14,
@@ -308,16 +395,10 @@ const styles = StyleSheet.create({
 
   timeText: {
     fontSize: 16,
-    color: '#222222',
-  },
-
-  placeholderText: {
-    color: '#999999',
   },
 
   chevron: {
     fontSize: 24,
-    color: '#aaaaaa',
   },
 
   buttons: {
@@ -333,14 +414,12 @@ const styles = StyleSheet.create({
   },
 
   addButton: {
-    backgroundColor: '#222222',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 9,
   },
 
   addButtonText: {
-    color: '#ffffff',
     fontWeight: '600',
   },
 });
