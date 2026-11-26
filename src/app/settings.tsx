@@ -1,10 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -17,8 +14,6 @@ import {
   type WeekStart,
 } from '@/contexts/settings-context';
 import { ensureNotificationPermission } from '@/notifications/task-notifications';
-
-const ITEM_HEIGHT = 50;
 
 const WEEKDAYS: {
   value: WeekStart;
@@ -44,54 +39,16 @@ export default function SettingsScreen() {
   const [pickerVisible, setPickerVisible] =
     useState(false);
 
-  const [temporaryWeekStart, setTemporaryWeekStart] =
-    useState<WeekStart>(weekStart);
-
-  const scrollViewRef = useRef<ScrollView>(null);
-
   const currentLabel =
     WEEKDAYS.find(
       (weekday) => weekday.value === weekStart
     )?.label ?? '月曜日';
 
-  const openPicker = () => {
-    setTemporaryWeekStart(weekStart);
-    setPickerVisible(true);
-
-    const index = WEEKDAYS.findIndex(
-      (weekday) => weekday.value === weekStart
-    );
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({
-        y: index * ITEM_HEIGHT,
-        animated: false,
-      });
-    }, 100);
-  };
-
-  const handleScrollEnd = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
+  // リストから選んだら即反映して閉じる
+  const handleSelectWeekStart = (
+    value: WeekStart
   ) => {
-    const offsetY =
-      event.nativeEvent.contentOffset.y;
-
-    const index = Math.round(
-      offsetY / ITEM_HEIGHT
-    );
-
-    const safeIndex = Math.max(
-      0,
-      Math.min(index, WEEKDAYS.length - 1)
-    );
-
-    setTemporaryWeekStart(
-      WEEKDAYS[safeIndex].value
-    );
-  };
-
-  const handleSave = () => {
-    setWeekStart(temporaryWeekStart);
+    setWeekStart(value);
     setPickerVisible(false);
   };
 
@@ -117,7 +74,9 @@ export default function SettingsScreen() {
 
         <Pressable
           style={styles.settingRow}
-          onPress={openPicker}
+          onPress={() =>
+            setPickerVisible(true)
+          }
         >
           <Text style={styles.settingName}>
             週の開始
@@ -179,70 +138,49 @@ export default function SettingsScreen() {
               週の開始
             </Text>
 
-            <View style={styles.pickerWrapper}>
-              {/* 中央の選択枠 */}
-              <View
-                pointerEvents="none"
-                style={styles.selectionBox}
-              />
+            {WEEKDAYS.map((weekday) => {
+              const selected =
+                weekday.value === weekStart;
 
-              <ScrollView
-                ref={scrollViewRef}
-                showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_HEIGHT}
-                decelerationRate="fast"
-                onMomentumScrollEnd={
-                  handleScrollEnd
-                }
-                onScrollEndDrag={
-                  handleScrollEnd
-                }
-                contentContainerStyle={
-                  styles.scrollContent
-                }
-              >
-                {WEEKDAYS.map((weekday) => (
-                  <View
-                    key={weekday.value}
-                    style={styles.pickerItem}
+              return (
+                <Pressable
+                  key={weekday.value}
+                  style={styles.listItem}
+                  onPress={() =>
+                    handleSelectWeekStart(
+                      weekday.value
+                    )
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.listItemText,
+                      selected &&
+                        styles.listItemSelected,
+                    ]}
                   >
-                    <Text
-                      style={[
-                        styles.pickerItemText,
+                    {weekday.label}
+                  </Text>
 
-                        temporaryWeekStart ===
-                          weekday.value &&
-                          styles.selectedText,
-                      ]}
-                    >
-                      {weekday.label}
+                  {selected && (
+                    <Text style={styles.checkText}>
+                      ✓
                     </Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
+                  )}
+                </Pressable>
+              );
+            })}
 
-            <View style={styles.buttons}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() =>
-                  setPickerVisible(false)
-                }
-              >
-                <Text style={styles.cancelText}>
-                  キャンセル
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.saveButton}
-                onPress={handleSave}
-              >
-                <Text style={styles.saveText}>
-                  完了
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() =>
+                setPickerVisible(false)
+              }
+            >
+              <Text style={styles.cancelText}>
+                キャンセル
+              </Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -333,72 +271,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
 
-  pickerWrapper: {
-    height: ITEM_HEIGHT * 5,
-    overflow: 'hidden',
-  },
-
-  scrollContent: {
-    paddingVertical: ITEM_HEIGHT * 2,
-  },
-
-  pickerItem: {
-    height: ITEM_HEIGHT,
+  listItem: {
+    minHeight: 52,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 4,
   },
 
-  pickerItemText: {
-    fontSize: 18,
-    color: '#aaaaaa',
+  listItemText: {
+    fontSize: 17,
+    color: '#444444',
   },
 
-  selectedText: {
-    fontSize: 20,
+  listItemSelected: {
     fontWeight: '600',
     color: '#222222',
   },
 
-  selectionBox: {
-    position: 'absolute',
-    top: ITEM_HEIGHT * 2,
-    left: 0,
-    right: 0,
-    height: ITEM_HEIGHT,
-    backgroundColor: '#f3f3f3',
-    borderRadius: 10,
-  },
-
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 20,
+  checkText: {
+    fontSize: 17,
+    color: '#222222',
   },
 
   cancelButton: {
-    paddingHorizontal: 16,
+    marginTop: 14,
     paddingVertical: 11,
+    alignItems: 'center',
   },
 
   cancelText: {
     fontSize: 16,
     color: '#666666',
-  },
-
-  saveButton: {
-    backgroundColor: '#222222',
-    paddingHorizontal: 22,
-    paddingVertical: 11,
-    borderRadius: 9,
-  },
-
-  saveText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

@@ -37,6 +37,10 @@ export default function TaskAddForm({
   const [recurrence, setRecurrence] =
     useState<Recurrence | undefined>(undefined);
 
+  // 予定名が未入力のまま追加しようとした
+  const [titleError, setTitleError] =
+    useState(false);
+
   const [timePickerVisible, setTimePickerVisible] =
     useState(false);
 
@@ -51,12 +55,16 @@ export default function TaskAddForm({
     setEndTime('');
     setMemo('');
     setRecurrence(undefined);
+    setTitleError(false);
   };
 
   const handleAdd = () => {
     const trimmedTitle = title.trim();
 
     if (trimmedTitle === '') {
+      // 無反応だと分かりにくいので
+      // 入力欄にエラーを表示する
+      setTitleError(true);
       return;
     }
 
@@ -89,11 +97,26 @@ export default function TaskAddForm({
         </Text>
 
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            titleError && styles.inputError,
+          ]}
           placeholder="予定名"
           value={title}
-          onChangeText={setTitle}
+          onChangeText={(text) => {
+            setTitle(text);
+
+            if (text.trim() !== '') {
+              setTitleError(false);
+            }
+          }}
         />
+
+        {titleError && (
+          <Text style={styles.errorText}>
+            予定名を入力してください
+          </Text>
+        )}
 
         {/* 開始時刻 */}
         <Text style={styles.label}>
@@ -251,6 +274,17 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginBottom: 14,
     fontSize: 16,
+  },
+
+  inputError: {
+    borderColor: '#d64545',
+    marginBottom: 6,
+  },
+
+  errorText: {
+    fontSize: 13,
+    color: '#d64545',
+    marginBottom: 14,
   },
 
   memoInput: {
