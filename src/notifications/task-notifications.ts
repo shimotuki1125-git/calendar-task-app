@@ -103,9 +103,11 @@ async function ensureAndroidChannel() {
 }
 
 // 1件の出現分を通知スケジュールする
+// minutesBefore 分だけ開始時刻より前に通知する
 async function scheduleOccurrence(
   task: Task,
-  date: string
+  date: string,
+  minutesBefore: number
 ) {
   const dateTime = toDateTime(
     date,
@@ -116,8 +118,15 @@ async function scheduleOccurrence(
     return;
   }
 
+  // 通知タイミング分だけ前倒しする
+  const notifyDateTime = new Date(
+    dateTime.getTime() -
+      minutesBefore * 60 * 1000
+  );
+
   // 過去の時刻には通知しない
-  if (dateTime.getTime() <= Date.now()) {
+  // （前倒しした時刻に対して判定する）
+  if (notifyDateTime.getTime() <= Date.now()) {
     return;
   }
 
@@ -137,7 +146,7 @@ async function scheduleOccurrence(
     trigger: {
       type: Notifications
         .SchedulableTriggerInputTypes.DATE,
-      date: dateTime,
+      date: notifyDateTime,
       ...(Platform.OS === 'android'
         ? { channelId: ANDROID_CHANNEL_ID }
         : {}),
@@ -155,7 +164,8 @@ async function scheduleOccurrence(
 // -----------------------------
 export async function syncTaskNotifications(
   tasks: Task[],
-  enabled: boolean
+  enabled: boolean,
+  minutesBefore: number = 0
 ): Promise<void> {
   if (Platform.OS === 'web') {
     return;
@@ -210,7 +220,11 @@ export async function syncTaskNotifications(
           continue;
         }
 
-        await scheduleOccurrence(task, task.date);
+        await scheduleOccurrence(
+          task,
+          task.date,
+          minutesBefore
+        );
       } else {
         // 繰り返し予定は、未完了の直近の
         // 出現分だけを通知対象にする
@@ -227,7 +241,11 @@ export async function syncTaskNotifications(
           0,
           MAX_RECURRENCE_NOTIFICATIONS
         )) {
-          await scheduleOccurrence(task, date);
+          await scheduleOccurrence(
+            task,
+            date,
+            minutesBefore
+          );
         }
       }
     }

@@ -16,6 +16,7 @@ import { useTasks } from '@/contexts/task-context';
 import { useTheme } from '@/hooks/use-theme';
 import type { Task } from '@/types/task';
 import {
+  nextOccurrenceOnOrAfter,
   occursOn,
   taskForDate,
 } from '@/utils/recurrence';
@@ -105,6 +106,19 @@ export default function HomeScreen() {
     )
   );
 
+  // 期限切れ：今日より前の日付で未完了の
+  // 通常予定を日付昇順＋時刻順に並べる
+  // 繰り返し予定は対象外
+  // （過去の出現はそのまま失効する現行仕様）
+  const overdueTasks = sortTasksByDateTime(
+    tasks.filter(
+      (task) =>
+        !task.recurrence &&
+        !task.completed &&
+        task.date < today
+    )
+  );
+
   // 検索結果：全予定からタイトル・メモで
   // 部分一致を探し、日付昇順＋時刻順に並べる
   // 繰り返し予定は元の予定を1件として扱う
@@ -145,6 +159,19 @@ export default function HomeScreen() {
     />
   );
 
+  // 期限切れの行（日付ラベル付き）
+  const renderOverdueRow = (task: Task) => (
+    <TaskRow
+      key={`overdue-${task.id}`}
+      task={task}
+      dateLabel={formatDateLabel(task.date)}
+      onToggle={() =>
+        toggleTask(task.id, task.date)
+      }
+      onEdit={() => openEditor(task)}
+    />
+  );
+
   // 検索結果の行
   // （日付・時刻・タイトル・メモを表示）
   const renderSearchResult = (task: Task) => {
@@ -153,6 +180,16 @@ export default function HomeScreen() {
         ? `${task.startTime}〜${task.endTime}`
         : task.startTime
       : '―';
+
+    // 繰り返し予定は開始日ではなく
+    // 今日以降の次回出現日を表示する
+    // （次回出現がない場合は開始日を表示）
+    const displayDate = task.recurrence
+      ? (nextOccurrenceOnOrAfter(
+          task,
+          today
+        ) ?? task.date)
+      : task.date;
 
     return (
       <Pressable
@@ -167,7 +204,7 @@ export default function HomeScreen() {
               { color: theme.text },
             ]}
           >
-            {formatDateLabel(task.date)}
+            {formatDateLabel(displayDate)}
           </Text>
 
           <Text
@@ -298,9 +335,31 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {/* 期限切れ（ある場合のみ表示） */}
+            {overdueTasks.length > 0 && (
+              <>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { color: theme.error },
+                  ]}
+                >
+                  期限切れ
+                </Text>
+
+                <View style={lineStyle} />
+
+                {overdueTasks.map(
+                  renderOverdueRow
+                )}
+              </>
+            )}
+
             <Text
               style={[
                 styles.sectionTitle,
+                overdueTasks.length > 0 &&
+                  styles.sectionTitleSpaced,
                 { color: theme.text },
               ]}
             >
@@ -450,6 +509,12 @@ const styles = StyleSheet.create({
   },
 
   completedSection: {
+    marginTop: 28,
+  },
+
+  // 期限切れ欄がある場合の
+  // 「今日の予定」との間隔
+  sectionTitleSpaced: {
     marginTop: 28,
   },
 

@@ -71,6 +71,10 @@ export default function TaskEditModal({
   const [titleError, setTitleError] =
     useState(false);
 
+  // 終了時刻が開始時刻以前になっている
+  const [endTimeError, setEndTimeError] =
+    useState(false);
+
   const [
     datePickerVisible,
     setDatePickerVisible,
@@ -97,6 +101,7 @@ export default function TaskEditModal({
     if (task !== null) {
       setTitle(task.title);
       setTitleError(false);
+      setEndTimeError(false);
       setDate(task.date);
       setTime(task.startTime);
       setEndTime(task.endTime ?? '');
@@ -120,6 +125,17 @@ export default function TaskEditModal({
       // 無反応だと分かりにくいので
       // 入力欄にエラーを表示する
       setTitleError(true);
+      return;
+    }
+
+    // 開始・終了の両方が設定されていて
+    // 終了時刻が開始時刻以前なら保存しない
+    if (
+      time !== '' &&
+      endTime !== '' &&
+      endTime <= time
+    ) {
+      setEndTimeError(true);
       return;
     }
 
@@ -186,6 +202,15 @@ export default function TaskEditModal({
       borderColor: theme.border,
     },
   ];
+
+  // 終了時刻エラー時は赤枠にする
+  const endTimeButtonStyle = endTimeError
+    ? [
+        ...selectButtonStyle,
+        styles.inputError,
+        { borderColor: theme.error },
+      ]
+    : selectButtonStyle;
 
   const selectTextStyle = (
     isPlaceholder: boolean
@@ -321,7 +346,7 @@ export default function TaskEditModal({
               </Text>
 
               <Pressable
-                style={selectButtonStyle}
+                style={endTimeButtonStyle}
                 onPress={() =>
                   setEndTimePickerVisible(true)
                 }
@@ -340,6 +365,17 @@ export default function TaskEditModal({
                   ›
                 </Text>
               </Pressable>
+
+              {endTimeError && (
+                <Text
+                  style={[
+                    styles.errorText,
+                    { color: theme.error },
+                  ]}
+                >
+                  終了時刻は開始時刻より後にしてください
+                </Text>
+              )}
 
               {/* 繰り返し */}
               <Text style={labelStyle}>
@@ -534,6 +570,7 @@ export default function TaskEditModal({
         }
         onConfirm={(selectedTime) => {
           setTime(selectedTime);
+          setEndTimeError(false);
         }}
       />
 
@@ -549,6 +586,7 @@ export default function TaskEditModal({
         }
         onConfirm={(selectedTime) => {
           setEndTime(selectedTime);
+          setEndTimeError(false);
         }}
       />
     </>

@@ -215,6 +215,17 @@ export default function CalendarScreen() {
   };
 
   // -----------------------------
+  // 今日へ戻る
+  // -----------------------------
+
+  const goToday = () => {
+    setYear(today.getFullYear());
+    setMonth(today.getMonth());
+    setSelectedDay(today.getDate());
+    setShowForm(false);
+  };
+
+  // -----------------------------
   // 今日かどうか
   // -----------------------------
 
@@ -298,19 +309,38 @@ export default function CalendarScreen() {
           {year}年{month + 1}月
         </Text>
 
-        <Pressable
-          style={styles.arrowButton}
-          onPress={goNextMonth}
-        >
-          <Text
+        <View style={styles.headerRight}>
+          <Pressable
             style={[
-              styles.arrow,
-              { color: theme.text },
+              styles.todayButton,
+              { borderColor: theme.border },
             ]}
+            onPress={goToday}
           >
-            ›
-          </Text>
-        </Pressable>
+            <Text
+              style={[
+                styles.todayButtonText,
+                { color: theme.text },
+              ]}
+            >
+              今日
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.arrowButton}
+            onPress={goNextMonth}
+          >
+            <Text
+              style={[
+                styles.arrow,
+                { color: theme.text },
+              ]}
+            >
+              ›
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* 曜日 */}
@@ -568,6 +598,24 @@ const styles = StyleSheet.create({
 
   arrow: {
     fontSize: 32,
+  },
+
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  todayButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+
+  todayButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   weekRow: {
