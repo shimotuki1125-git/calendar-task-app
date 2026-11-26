@@ -44,6 +44,10 @@ export default function TaskAddForm({
   const [titleError, setTitleError] =
     useState(false);
 
+  // 終了時刻が開始時刻以前になっている
+  const [endTimeError, setEndTimeError] =
+    useState(false);
+
   const [timePickerVisible, setTimePickerVisible] =
     useState(false);
 
@@ -59,6 +63,7 @@ export default function TaskAddForm({
     setMemo('');
     setRecurrence(undefined);
     setTitleError(false);
+    setEndTimeError(false);
   };
 
   const handleAdd = () => {
@@ -68,6 +73,17 @@ export default function TaskAddForm({
       // 無反応だと分かりにくいので
       // 入力欄にエラーを表示する
       setTitleError(true);
+      return;
+    }
+
+    // 開始・終了の両方が設定されていて
+    // 終了時刻が開始時刻以前なら保存しない
+    if (
+      time !== '' &&
+      endTime !== '' &&
+      endTime <= time
+    ) {
+      setEndTimeError(true);
       return;
     }
 
@@ -213,6 +229,10 @@ export default function TaskAddForm({
               backgroundColor: theme.inputBackground,
               borderColor: theme.border,
             },
+            endTimeError && [
+              styles.timeButtonError,
+              { borderColor: theme.error },
+            ],
           ]}
           onPress={() =>
             setEndTimePickerVisible(true)
@@ -241,6 +261,17 @@ export default function TaskAddForm({
             ›
           </Text>
         </Pressable>
+
+        {endTimeError && (
+          <Text
+            style={[
+              styles.errorText,
+              { color: theme.error },
+            ]}
+          >
+            終了時刻は開始時刻より後にしてください
+          </Text>
+        )}
 
         {/* 繰り返し */}
         <Text
@@ -323,6 +354,7 @@ export default function TaskAddForm({
         }
         onConfirm={(selectedTime) => {
           setTime(selectedTime);
+          setEndTimeError(false);
         }}
       />
 
@@ -335,6 +367,7 @@ export default function TaskAddForm({
         }
         onConfirm={(selectedTime) => {
           setEndTime(selectedTime);
+          setEndTimeError(false);
         }}
       />
     </>
@@ -391,6 +424,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+
+  timeButtonError: {
+    marginBottom: 6,
   },
 
   timeText: {

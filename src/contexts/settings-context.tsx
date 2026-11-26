@@ -24,8 +24,20 @@ type SettingsContextType = {
   setNotificationsEnabled: (
     enabled: boolean
   ) => void;
+
+  // 通知のタイミング（開始時刻の何分前に
+  // 通知するか。0 = 開始時刻）
+  reminderMinutesBefore: number;
+  setReminderMinutesBefore: (
+    minutes: number
+  ) => void;
   isLoaded: boolean;
 };
+
+// 通知タイミングの選択肢（分）
+export const REMINDER_MINUTES_OPTIONS = [
+  0, 5, 10, 30, 60,
+] as const;
 
 const SettingsContext =
   createContext<SettingsContextType | undefined>(
@@ -36,6 +48,9 @@ const WEEK_START_KEY = 'weekStart';
 
 const NOTIFICATIONS_ENABLED_KEY =
   'notificationsEnabled';
+
+const REMINDER_MINUTES_KEY =
+  'reminderMinutesBefore';
 
 export function SettingsProvider({
   children,
@@ -49,6 +64,11 @@ export function SettingsProvider({
     notificationsEnabled,
     setNotificationsEnabledState,
   ] = useState(true);
+
+  const [
+    reminderMinutesBefore,
+    setReminderMinutesBeforeState,
+  ] = useState(0);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -80,6 +100,27 @@ export function SettingsProvider({
           setNotificationsEnabledState(
             savedNotificationsEnabled === 'true'
           );
+        }
+
+        const savedReminderMinutes =
+          await AsyncStorage.getItem(
+            REMINDER_MINUTES_KEY
+          );
+
+        if (savedReminderMinutes !== null) {
+          const minutes = Number(
+            savedReminderMinutes
+          );
+
+          if (
+            (REMINDER_MINUTES_OPTIONS as readonly number[]).includes(
+              minutes
+            )
+          ) {
+            setReminderMinutesBeforeState(
+              minutes
+            );
+          }
         }
       } catch (error) {
         console.error(
@@ -128,6 +169,23 @@ export function SettingsProvider({
     });
   };
 
+  // 通知タイミングを変更して保存する
+  const setReminderMinutesBefore = (
+    minutes: number
+  ) => {
+    setReminderMinutesBeforeState(minutes);
+
+    AsyncStorage.setItem(
+      REMINDER_MINUTES_KEY,
+      String(minutes)
+    ).catch((error) => {
+      console.error(
+        '設定の保存に失敗しました:',
+        error
+      );
+    });
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -135,6 +193,8 @@ export function SettingsProvider({
         setWeekStart,
         notificationsEnabled,
         setNotificationsEnabled,
+        reminderMinutesBefore,
+        setReminderMinutesBefore,
         isLoaded,
       }}
     >

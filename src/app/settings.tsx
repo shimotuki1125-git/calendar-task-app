@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import {
   Alert,
@@ -32,6 +33,19 @@ const WEEKDAYS: {
   { value: 'friday', label: '金曜日' },
   { value: 'saturday', label: '土曜日' },
   { value: 'sunday', label: '日曜日' },
+];
+
+// 通知タイミングの選択肢
+// （値は開始時刻の何分前か。0 = 開始時刻）
+const REMINDER_TIMINGS: {
+  value: number;
+  label: string;
+}[] = [
+  { value: 0, label: '開始時刻' },
+  { value: 5, label: '5分前' },
+  { value: 10, label: '10分前' },
+  { value: 30, label: '30分前' },
+  { value: 60, label: '1時間前' },
 ];
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -175,6 +189,8 @@ export default function SettingsScreen() {
     setWeekStart,
     notificationsEnabled,
     setNotificationsEnabled,
+    reminderMinutesBefore,
+    setReminderMinutesBefore,
   } = useSettings();
 
   const { tasks, replaceTasks } = useTasks();
@@ -184,8 +200,17 @@ export default function SettingsScreen() {
   const [pickerVisible, setPickerVisible] =
     useState(false);
 
+  const [
+    timingPickerVisible,
+    setTimingPickerVisible,
+  ] = useState(false);
+
   // データの書き出し・読み込み
   const [exportVisible, setExportVisible] =
+    useState(false);
+
+  // 書き出しJSONをコピーした直後かどうか
+  const [exportCopied, setExportCopied] =
     useState(false);
 
   const [importVisible, setImportVisible] =
@@ -201,6 +226,12 @@ export default function SettingsScreen() {
     WEEKDAYS.find(
       (weekday) => weekday.value === weekStart
     )?.label ?? '月曜日';
+
+  const currentTimingLabel =
+    REMINDER_TIMINGS.find(
+      (timing) =>
+        timing.value === reminderMinutesBefore
+    )?.label ?? '開始時刻';
 
   // リストから選んだら即反映して閉じる
   const handleSelectWeekStart = (
@@ -218,6 +249,47 @@ export default function SettingsScreen() {
     // オンにしたときは通知許可を確認する
     if (enabled) {
       ensureNotificationPermission();
+    }
+  };
+
+  // リストから選んだら即反映して閉じる
+  // （通知の再同期は TaskProvider 側の
+  //   既存の仕組みで連動する）
+  const handleSelectReminderTiming = (
+    value: number
+  ) => {
+    setReminderMinutesBefore(value);
+    setTimingPickerVisible(false);
+  };
+
+  const openExport = () => {
+    setExportCopied(false);
+    setExportVisible(true);
+  };
+
+  // 書き出しJSONをクリップボードへコピーする
+  const handleCopyExport = async () => {
+    try {
+      const copied =
+        await Clipboard.setStringAsync(
+          exportJson
+        );
+
+      // Web では失敗時に false が返る
+      if (copied === false) {
+        return;
+      }
+
+      setExportCopied(true);
+
+      setTimeout(() => {
+        setExportCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error(
+        'コピーに失敗しました:',
+        error
+      );
     }
   };
 
@@ -373,13 +445,54 @@ export default function SettingsScreen() {
             />
           </View>
 
+          <Pressable
+            style={[
+              styles.settingRow,
+              rowBorderStyle,
+            ]}
+            onPress={() =>
+              setTimingPickerVisible(true)
+            }
+          >
+            <Text
+              style={[
+                styles.settingName,
+                { color: theme.text },
+              ]}
+            >
+              通知のタイミング
+            </Text>
+
+            <View style={styles.settingRight}>
+              <Text
+                style={[
+                  styles.settingValue,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                {currentTimingLabel}
+              </Text>
+
+              <Text
+                style={[
+                  styles.chevron,
+                  { color: theme.textTertiary },
+                ]}
+              >
+                ›
+              </Text>
+            </View>
+          </Pressable>
+
           <Text
             style={[
               styles.description,
               { color: theme.textTertiary },
             ]}
           >
-            予定の開始時刻に通知します。
+            予定の開始時刻をもとに、
+            「通知のタイミング」で選んだ
+            時刻に通知します。
             繰り返しの予定は直近の出現分が対象です。
           </Text>
         </View>
@@ -399,9 +512,7 @@ export default function SettingsScreen() {
               styles.settingRow,
               rowBorderStyle,
             ]}
-            onPress={() =>
-              setExportVisible(true)
-            }
+            onPress={openExport}
           >
             <Text
               style={[
@@ -574,6 +685,105 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* 通知タイミング選択 */}
+      <Modal
+        visible={timingPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setTimingPickerVisible(false)
+        }
+      >
+        <View style={styles.modalBackground}>
+          <Pressable
+            style={styles.modalOutside}
+            onPress={() =>
+              setTimingPickerVisible(false)
+            }
+          />
+
+          <View
+            style={[
+              styles.pickerContainer,
+              { backgroundColor: theme.background },
+            ]}
+          >
+            <Text
+              style={[
+                styles.pickerTitle,
+                { color: theme.text },
+              ]}
+            >
+              通知のタイミング
+            </Text>
+
+            {REMINDER_TIMINGS.map((timing) => {
+              const selected =
+                timing.value ===
+                reminderMinutesBefore;
+
+              return (
+                <Pressable
+                  key={timing.value}
+                  style={[
+                    styles.listItem,
+                    {
+                      borderBottomColor:
+                        theme.borderLight,
+                    },
+                  ]}
+                  onPress={() =>
+                    handleSelectReminderTiming(
+                      timing.value
+                    )
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.listItemText,
+                      { color: theme.textSecondary },
+                      selected && [
+                        styles.listItemSelected,
+                        { color: theme.text },
+                      ],
+                    ]}
+                  >
+                    {timing.label}
+                  </Text>
+
+                  {selected && (
+                    <Text
+                      style={[
+                        styles.checkText,
+                        { color: theme.text },
+                      ]}
+                    >
+                      ✓
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() =>
+                setTimingPickerVisible(false)
+              }
+            >
+              <Text
+                style={[
+                  styles.cancelText,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                キャンセル
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* データの書き出し */}
       <Modal
         visible={exportVisible}
@@ -636,6 +846,25 @@ export default function SettingsScreen() {
                 {exportJson}
               </Text>
             </ScrollView>
+
+            <Pressable
+              style={[
+                styles.copyButton,
+                { backgroundColor: theme.accent },
+              ]}
+              onPress={handleCopyExport}
+            >
+              <Text
+                style={[
+                  styles.copyButtonText,
+                  { color: theme.accentText },
+                ]}
+              >
+                {exportCopied
+                  ? 'コピーしました'
+                  : 'コピーする'}
+              </Text>
+            </Pressable>
 
             <Pressable
               style={styles.cancelButton}
@@ -909,6 +1138,18 @@ const styles = StyleSheet.create({
   jsonText: {
     fontSize: 12,
     lineHeight: 17,
+  },
+
+  copyButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 9,
+    alignItems: 'center',
+  },
+
+  copyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   importInput: {

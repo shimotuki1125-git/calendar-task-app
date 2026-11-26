@@ -75,6 +75,7 @@ export function TaskProvider({
 
   const {
     notificationsEnabled,
+    reminderMinutesBefore,
     isLoaded: isSettingsLoaded,
   } = useSettings();
 
@@ -109,12 +110,14 @@ export function TaskProvider({
 
     syncTaskNotifications(
       tasks,
-      notificationsEnabled
+      notificationsEnabled,
+      reminderMinutesBefore
     );
   }, [
     tasks,
     isLoaded,
     notificationsEnabled,
+    reminderMinutesBefore,
     isSettingsLoaded,
   ]);
 

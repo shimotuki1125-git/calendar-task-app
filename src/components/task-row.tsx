@@ -12,12 +12,17 @@ type TaskRowProps = {
   task: Task;
   onToggle: () => void;
   onEdit: () => void;
+
+  // 日付を添えて表示したい場合に指定する
+  // （今日タブの「期限切れ」欄など）
+  dateLabel?: string;
 };
 
 export default function TaskRow({
   task,
   onToggle,
   onEdit,
+  dateLabel,
 }: TaskRowProps) {
   const theme = useTheme();
 
@@ -59,6 +64,17 @@ export default function TaskRow({
         </Text>
 
         <View style={styles.titleArea}>
+          {!!dateLabel && (
+            <Text
+              style={[
+                styles.dateLabel,
+                { color: theme.error },
+              ]}
+            >
+              {dateLabel}
+            </Text>
+          )}
+
           <Text
             style={[
               styles.taskTitle,
@@ -123,6 +139,12 @@ const styles = StyleSheet.create({
 
   titleArea: {
     flex: 1,
+  },
+
+  dateLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
   },
 
   taskTitle: {

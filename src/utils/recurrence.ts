@@ -85,10 +85,23 @@ export function occursOn(
   }
 
   // monthly: 開始日と同じ「日」に出現する
-  // 対象の月にその日が存在しない場合
-  // （例: 開始日が31日で30日までしかない月）は
-  // 出現しない
-  return start.getDate() === target.getDate();
+  // 開始日が対象の月の日数を超える場合は
+  // その月の最終日に出現する
+  // （例: 開始日が31日なら、30日までの月は30日、
+  //   2月は28日（うるう年は29日）に出現する）
+  const lastDayOfTargetMonth = new Date(
+    target.getFullYear(),
+    target.getMonth() + 1,
+    0
+  ).getDate();
+
+  return (
+    target.getDate() ===
+    Math.min(
+      start.getDate(),
+      lastDayOfTargetMonth
+    )
+  );
 }
 
 // 期間内に出現する日付の一覧
