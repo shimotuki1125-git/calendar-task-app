@@ -20,6 +20,10 @@ export type WeekStart =
 type SettingsContextType = {
   weekStart: WeekStart;
   setWeekStart: (weekStart: WeekStart) => void;
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: (
+    enabled: boolean
+  ) => void;
   isLoaded: boolean;
 };
 
@@ -30,6 +34,9 @@ const SettingsContext =
 
 const WEEK_START_KEY = 'weekStart';
 
+const NOTIFICATIONS_ENABLED_KEY =
+  'notificationsEnabled';
+
 export function SettingsProvider({
   children,
 }: {
@@ -37,6 +44,11 @@ export function SettingsProvider({
 }) {
   const [weekStart, setWeekStartState] =
     useState<WeekStart>('monday');
+
+  const [
+    notificationsEnabled,
+    setNotificationsEnabledState,
+  ] = useState(true);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -57,6 +69,17 @@ export function SettingsProvider({
           savedWeekStart === 'sunday'
         ) {
           setWeekStartState(savedWeekStart);
+        }
+
+        const savedNotificationsEnabled =
+          await AsyncStorage.getItem(
+            NOTIFICATIONS_ENABLED_KEY
+          );
+
+        if (savedNotificationsEnabled !== null) {
+          setNotificationsEnabledState(
+            savedNotificationsEnabled === 'true'
+          );
         }
       } catch (error) {
         console.error(
@@ -88,11 +111,30 @@ export function SettingsProvider({
     });
   };
 
+  // 通知のオン / オフを変更して保存する
+  const setNotificationsEnabled = (
+    enabled: boolean
+  ) => {
+    setNotificationsEnabledState(enabled);
+
+    AsyncStorage.setItem(
+      NOTIFICATIONS_ENABLED_KEY,
+      enabled ? 'true' : 'false'
+    ).catch((error) => {
+      console.error(
+        '設定の保存に失敗しました:',
+        error
+      );
+    });
+  };
+
   return (
     <SettingsContext.Provider
       value={{
         weekStart,
         setWeekStart,
+        notificationsEnabled,
+        setNotificationsEnabled,
         isLoaded,
       }}
     >

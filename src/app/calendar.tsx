@@ -13,6 +13,10 @@ import TaskRow from '@/components/task-row';
 import { useSettings } from '@/contexts/settings-context';
 import { useTasks } from '@/contexts/task-context';
 import type { Task } from '@/types/task';
+import {
+  occursOn,
+  taskForDate,
+} from '@/utils/recurrence';
 
 const WEEKDAY_DATA = [
   { label: '日', value: 'sunday', number: 0 },
@@ -137,9 +141,15 @@ export default function CalendarScreen() {
     selectedDay
   );
 
-  const selectedTasks = tasks.filter(
-    (task) => task.date === selectedDate
-  );
+  // 選択中の日付の予定
+  // （繰り返しの出現分を含む）
+  const selectedTasks = tasks
+    .filter((task) =>
+      occursOn(task, selectedDate)
+    )
+    .map((task) =>
+      taskForDate(task, selectedDate)
+    );
 
   const incompleteTasks =
     selectedTasks.filter(
@@ -218,9 +228,22 @@ export default function CalendarScreen() {
       day
     );
 
-    return tasks.some(
-      (task) => task.date === date
+    return tasks.some((task) =>
+      occursOn(task, date)
     );
+  };
+
+  // -----------------------------
+  // 編集画面を開く
+  // （表示用ではなく元の予定を渡す）
+  // -----------------------------
+
+  const openEditor = (displayTask: Task) => {
+    const original = tasks.find(
+      (task) => task.id === displayTask.id
+    );
+
+    setEditingTask(original ?? displayTask);
   };
 
   // -----------------------------
@@ -359,11 +382,12 @@ export default function CalendarScreen() {
         <View style={styles.formContainer}>
           <TaskAddForm
             showTitle={false}
-            onAdd={(title, time) => {
+            onAdd={(title, time, options) => {
               addTask(
                 title,
                 selectedDate,
-                time
+                time,
+                options
               );
 
               setShowForm(false);
@@ -389,11 +413,9 @@ export default function CalendarScreen() {
           key={task.id}
           task={task}
           onToggle={() =>
-            toggleTask(task.id)
+            toggleTask(task.id, selectedDate)
           }
-          onEdit={() =>
-            setEditingTask(task)
-          }
+          onEdit={() => openEditor(task)}
         />
       ))}
 
@@ -412,10 +434,13 @@ export default function CalendarScreen() {
                 key={task.id}
                 task={task}
                 onToggle={() =>
-                  toggleTask(task.id)
+                  toggleTask(
+                    task.id,
+                    selectedDate
+                  )
                 }
                 onEdit={() =>
-                  setEditingTask(task)
+                  openEditor(task)
                 }
               />
             )

@@ -18,6 +18,12 @@ export default function TaskRow({
   onToggle,
   onEdit,
 }: TaskRowProps) {
+  const timeLabel = task.startTime
+    ? task.endTime
+      ? `${task.startTime}〜${task.endTime}`
+      : task.startTime
+    : '―';
+
   return (
     <View style={styles.task}>
       {/* チェックボックス */}
@@ -36,18 +42,30 @@ export default function TaskRow({
         onPress={onEdit}
       >
         <Text style={styles.time}>
-          {task.startTime || '―'}
+          {timeLabel}
         </Text>
 
-        <Text
-          style={[
-            styles.taskTitle,
-            task.completed &&
-              styles.completedTask,
-          ]}
-        >
-          {task.title}
-        </Text>
+        <View style={styles.titleArea}>
+          <Text
+            style={[
+              styles.taskTitle,
+              task.completed &&
+                styles.completedTask,
+            ]}
+          >
+            {task.title}
+            {task.recurrence ? '  ↻' : ''}
+          </Text>
+
+          {!!task.memo && (
+            <Text
+              style={styles.memo}
+              numberOfLines={1}
+            >
+              {task.memo}
+            </Text>
+          )}
+        </View>
       </Pressable>
     </View>
   );
@@ -79,14 +97,23 @@ const styles = StyleSheet.create({
   },
 
   time: {
-    width: 64,
-    fontSize: 16,
+    width: 118,
+    fontSize: 14,
     color: '#555555',
   },
 
-  taskTitle: {
+  titleArea: {
     flex: 1,
+  },
+
+  taskTitle: {
     fontSize: 17,
+  },
+
+  memo: {
+    fontSize: 13,
+    color: '#999999',
+    marginTop: 2,
   },
 
   completedTask: {

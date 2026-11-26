@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -15,6 +16,7 @@ import {
   useSettings,
   type WeekStart,
 } from '@/contexts/settings-context';
+import { ensureNotificationPermission } from '@/notifications/task-notifications';
 
 const ITEM_HEIGHT = 50;
 
@@ -32,7 +34,12 @@ const WEEKDAYS: {
 ];
 
 export default function SettingsScreen() {
-  const { weekStart, setWeekStart } = useSettings();
+  const {
+    weekStart,
+    setWeekStart,
+    notificationsEnabled,
+    setNotificationsEnabled,
+  } = useSettings();
 
   const [pickerVisible, setPickerVisible] =
     useState(false);
@@ -88,6 +95,17 @@ export default function SettingsScreen() {
     setPickerVisible(false);
   };
 
+  const handleToggleNotifications = (
+    enabled: boolean
+  ) => {
+    setNotificationsEnabled(enabled);
+
+    // オンにしたときは通知許可を確認する
+    if (enabled) {
+      ensureNotificationPermission();
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>設定</Text>
@@ -113,6 +131,30 @@ export default function SettingsScreen() {
             <Text style={styles.chevron}>›</Text>
           </View>
         </Pressable>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          通知
+        </Text>
+
+        <View style={styles.settingRow}>
+          <Text style={styles.settingName}>
+            予定のリマインダー
+          </Text>
+
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={
+              handleToggleNotifications
+            }
+          />
+        </View>
+
+        <Text style={styles.description}>
+          予定の開始時刻に通知します。
+          繰り返しの予定は直近の出現分が対象です。
+        </Text>
       </View>
 
       {/* 曜日選択 */}
@@ -243,6 +285,13 @@ const styles = StyleSheet.create({
 
   settingName: {
     fontSize: 17,
+  },
+
+  description: {
+    fontSize: 13,
+    color: '#999999',
+    marginTop: 10,
+    lineHeight: 19,
   },
 
   settingRight: {
