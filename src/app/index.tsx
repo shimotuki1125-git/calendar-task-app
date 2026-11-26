@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import { useTasks } from '@/contexts/task-context';
 import { useTheme } from '@/hooks/use-theme';
 import type { Task } from '@/types/task';
 import {
+  isCompletedOn,
   nextOccurrenceOnOrAfter,
   occursOn,
   taskForDate,
@@ -148,17 +150,41 @@ export default function HomeScreen() {
         );
 
   // 期限切れをすべて今日へ移す
+  // （一括操作なので実行前に確認する）
   const handleMoveOverdueToToday = () => {
-    moveTasksToDate(
-      overdueTasks.map((task) => task.id),
-      today
+    Alert.alert(
+      '今日へ移しますか？',
+      `期限切れの予定${overdueTasks.length}件を、すべて今日の予定に移します。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '今日へ移す',
+          onPress: () =>
+            moveTasksToDate(
+              overdueTasks.map((task) => task.id),
+              today
+            ),
+        },
+      ]
     );
   };
 
   // 期限切れをすべて完了にする
+  // （一括操作なので実行前に確認する）
   const handleCompleteOverdue = () => {
-    completeTasks(
-      overdueTasks.map((task) => task.id)
+    Alert.alert(
+      'すべて完了にしますか？',
+      `期限切れの予定${overdueTasks.length}件を、すべて完了にします。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'すべて完了',
+          onPress: () =>
+            completeTasks(
+              overdueTasks.map((task) => task.id)
+            ),
+        },
+      ]
     );
   };
 
@@ -250,6 +276,12 @@ export default function HomeScreen() {
   ) => {
     const { task, displayDate } = entry;
 
+    // 表示日の時点で完了しているか
+    // （繰り返し予定は表示日＝次回出現日の完了状態）
+    const completed = task.recurrence
+      ? isCompletedOn(task, displayDate)
+      : task.completed;
+
     const timeLabel = task.startTime
       ? task.endTime
         ? `${task.startTime}〜${task.endTime}`
@@ -289,11 +321,26 @@ export default function HomeScreen() {
             style={[
               styles.searchTitle,
               { color: theme.text },
+              completed && {
+                color: theme.textTertiary,
+                textDecorationLine: 'line-through',
+              },
             ]}
           >
             {task.title}
             {task.recurrence ? '  ↻' : ''}
           </Text>
+
+          {completed && (
+            <Text
+              style={[
+                styles.searchDone,
+                { color: theme.textTertiary },
+              ]}
+            >
+              ✓ 完了
+            </Text>
+          )}
 
           {!!task.memo && (
             <Text
@@ -715,6 +762,11 @@ const styles = StyleSheet.create({
 
   searchTitle: {
     fontSize: 16,
+  },
+
+  searchDone: {
+    fontSize: 12,
+    marginTop: 2,
   },
 
   searchMemo: {
